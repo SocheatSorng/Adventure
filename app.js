@@ -81,35 +81,49 @@ document.addEventListener('DOMContentLoaded', () => {
     let isMoving = false;
     let rafId = null;
 
-    table.addEventListener('mousemove', e => {
-        const img = e.target.closest('img');
-        if (!img || img.src.includes('data:image')) return;
-
-        isMoving = true;
-        if (rafId) return;
-
-        rafId = requestAnimationFrame(() => {
-            updateMagnifier(e, img);
-            rafId = null;
-        });
-    });
-
     function updateMagnifier(e, img) {
         const rect = img.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
+        // Calculate relative position within the image
+        const xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+        const yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100));
+        
+        // Position the magnifier
+        const magWidth = magnifier.offsetWidth;
+        const magHeight = magnifier.offsetHeight;
+        
         magnifier.style.display = 'block';
-        magnifier.style.left = `${e.pageX - 75}px`;
-        magnifier.style.top = `${e.pageY - 75}px`;
+        magnifier.style.left = `${e.pageX - magWidth/2}px`;
+        magnifier.style.top = `${e.pageY - magHeight/2}px`;
         
-        const bgX = (x / rect.width) * 100;
-        const bgY = (y / rect.height) * 100;
+        // Use the actual image source for higher quality zoom
+        const imgSrc = img.dataset.src || img.src;
+        if (imgSrc.includes('data:image')) {
+            magnifier.style.display = 'none';
+            return;
+        }
         
-        magnifier.style.backgroundImage = `url(${img.dataset.src || img.src})`;
-        magnifier.style.backgroundSize = '300%';
-        magnifier.style.backgroundPosition = `${bgX}% ${bgY}%`;
+        magnifier.style.backgroundImage = `url(${imgSrc})`;
+        magnifier.style.backgroundSize = '400%';
+        magnifier.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
     }
+
+    // Optimize mousemove performance with debounce
+    let timeout;
+    table.addEventListener('mousemove', e => {
+        const img = e.target.closest('img');
+        if (!img || img.src.includes('data:image')) {
+            magnifier.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            updateMagnifier(e, img);
+        }, 10);
+    });
 
     table.addEventListener('mouseleave', () => {
         magnifier.style.display = 'none';
