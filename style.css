@@ -16,6 +16,7 @@ td {
     border: 1px solid #333;
     text-align: center;
     padding: 2px;
+    position: relative; /* Add this for absolute positioning of tokens */
 }
 
 td img {
@@ -26,6 +27,7 @@ td img {
     cursor: crosshair;
     transition: opacity 0.3s;
     background: #f0f0f0;
+    z-index: 1; /* Ensure images stay behind tokens */
 }
 
 td img[src^="data:image"] {
@@ -167,4 +169,57 @@ td img[src^="data:image"] {
 @keyframes diceRoll {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+.icon-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    background: #f0f0f0;
+    min-height: 100vh;
+}
+
+.player-icon-selection {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 600px;
+}
+
+.icon-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.icon-option {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    height: 60px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.icon-option:hover {
+    transform: scale(1.1);
+    border-color: #4CAF50;
+}
+
+.icon-option.selected {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+.icon-option i {
+    font-size: 24px;
 }

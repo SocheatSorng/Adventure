@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Icon</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="icon-selection">
+        <h2>Choose Your Icon</h2>
+        <div id="playerIconSelections"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const playerCount = localStorage.getItem('playerCount');
+            const icons = [
+                'fas fa-dragon', 'fas fa-cat', 'fas fa-dog', 'fas fa-horse',
+                'fas fa-dove', 'fas fa-fish', 'fas fa-hippo', 'fas fa-spider'
+            ];
+            const playerIcons = [];
+            const selectionsDiv = document.getElementById('playerIconSelections');
+
+            for (let i = 1; i <= playerCount; i++) {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player-icon-selection';
+                playerDiv.innerHTML = `
+                    <h3>Player ${i}</h3>
+                    <div class="icon-grid">
+                        ${icons.map(icon => `
+                            <div class="icon-option" data-player="${i}" data-icon="${icon}">
+                                <i class="${icon}"></i>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                selectionsDiv.appendChild(playerDiv);
+            }
+
+            document.querySelectorAll('.icon-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    const player = e.target.closest('.icon-option').dataset.player;
+                    const icon = e.target.closest('.icon-option').dataset.icon;
+                    
+                    // Remove previous selection for this player
+                    document.querySelectorAll(`.icon-option[data-player="${player}"]`)
+                        .forEach(opt => opt.classList.remove('selected'));
+                    
+                    // Add selection to clicked icon
+                    e.target.closest('.icon-option').classList.add('selected');
+                    
+                    // Store selection
+                    playerIcons[player - 1] = icon;
+                    
+                    // If all players have selected, proceed to game
+                    if (playerIcons.filter(Boolean).length === Number(playerCount)) {
+                        localStorage.setItem('playerIcons', JSON.stringify(playerIcons));
+                        window.location.href = 'game.html';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

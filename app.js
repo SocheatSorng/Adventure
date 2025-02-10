@@ -131,15 +131,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Add player position tracking
+    const playerPositions = new Array(Number(playerCount)).fill(0);
+    const playerTokens = [];
+
+    // Get player icons from localStorage
+    const playerIcons = JSON.parse(localStorage.getItem('playerIcons') || '[]');
+
+    // Create player tokens with selected icons
+    for (let i = 0; i < playerCount; i++) {
+        const token = document.createElement('div');
+        token.className = `player-token player${i + 1}`;
+        token.innerHTML = `<i class="${playerIcons[i] || 'fas fa-user'}"></i>`;
+        playerTokens.push(token);
+        const startCell = table.rows[0].cells[0];
+        startCell.appendChild(token);
+    }
+
+    function movePlayer(playerIndex, diceResult) {
+        const currentPos = playerPositions[playerIndex];
+        const newPos = Math.min(currentPos + diceResult, 63); // Limit to last cell (64th position)
+        
+        // Calculate new row and column
+        const currentRow = Math.floor(currentPos / 8);
+        const currentCol = currentPos % 8;
+        const newRow = Math.floor(newPos / 8);
+        const newCol = newPos % 8;
+        
+        // Move token to new position
+        const token = playerTokens[playerIndex];
+        const targetCell = table.rows[newRow].cells[newCol];
+        targetCell.appendChild(token);
+        
+        // Update position in array
+        playerPositions[playerIndex] = newPos;
+        
+        // Check if player reached the end
+        if (newPos === 63) {
+            alert(`Player ${playerIndex + 1} wins!`);
+        }
+    }
+
     // Update dice rolling functionality
     const diceIcon = document.getElementById('diceIcon');
     const diceResult = document.getElementById('diceResult');
     
     diceIcon.addEventListener('click', () => {
+        // Only allow current player to roll
+        const activePlayerIndex = currentPlayer - 1;
+        
         diceIcon.classList.add('dice-roll');
         diceResult.classList.remove('show');
         
-        // Simulate rolling effect
         let rolls = 0;
         const maxRolls = 10;
         const rollInterval = setInterval(() => {
@@ -153,7 +196,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 const finalResult = Math.floor(Math.random() * 6) + 1;
                 diceResult.textContent = finalResult;
                 diceIcon.classList.remove('dice-roll');
+                
+                // Move player after roll completes
+                movePlayer(activePlayerIndex, finalResult);
+                nextTurn();
             }
         }, 100);
     });
+
+    // Add styles for player tokens to the document
+    const style = document.createElement('style');
+    style.textContent = `
+        .player-token {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .player1 { background-color: #FF4136; }
+        .player2 { background-color: #2ECC40; }
+        .player3 { background-color: #0074D9; }
+        .player4 { background-color: #FF851B; }
+        td { position: relative; }
+    `;
+    document.head.appendChild(style);
 });
