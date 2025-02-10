@@ -9,7 +9,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     rollDice,
     cellOccupancy,
     TOTAL_CELLS,
-    movePlayer  // Add movePlayer to the parameters
+    movePlayer,  // Add movePlayer to the parameters
+    currentPlayer  // Add currentPlayer parameter
 }) {
     const stats = playerStats[playerIndex];
     let message = '';
@@ -170,46 +171,124 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             showGoldAnimation(targetCell, 500);
             break;
 
-        case 17: // Lost in forest
-            stats.turns = Math.max(0, (stats.turns || 0) - 1);
-            message = 'Lost in the forest! Skip 1 turn';
-            break;
-
-        case 18: // Snake encounter
-            if (confirm('A snake appears! Do you want to fight it? (OK to fight, Cancel to run)')) {
-                if (stats.strength > 4) {
-                    message = 'You defeated the snake with your strength!';
-                } else {
-                    stats.health--;
-                    message = 'The snake bit you! Lost 1 health';
-                    if (stats.health <= 0) {
-                        playerPositions[playerIndex] = 0;
-                        message = 'You lost all health! Back to start.';
-                    }
-                }
+        case 17: // Lost in dark forest
+            if (stats.hasMap) {
+                message = 'Your map helped you navigate the dark forest!';
             } else {
-                stats.health--;
-                message = 'You ran but got bit! Lost 1 health';
+                stats.turns = Math.max(0, (stats.turns || 0) - 1);
+                message = 'Lost in a dark forest! Skip a turn 🌲';
             }
             break;
 
-        case 20: // Treasure chest
-            const lootType = Math.floor(Math.random() * 3);
-            switch(lootType) {
+        case 18: // Merchant's armor
+            if (playerGold[playerIndex] >= 300 && confirm('Buy powerful armor for 300 gold? (+2 Health)')) {
+                playerGold[playerIndex] -= 300;
+                stats.health += 2;
+                message = 'You bought powerful armor! Health +2 🛡️';
+            } else {
+                message = 'You cannot afford the armor or declined 🛡️';
+            }
+            break;
+
+        case 19: // Snake encounter
+            if (confirm('A huge snake blocks your path! Fight it? (OK to fight, Cancel to flee) 🐍')) {
+                if (stats.strength >= 3) {
+                    stats.strength++;
+                    message = 'You defeated the snake! Strength +1 🐍';
+                } else {
+                    stats.health = Math.max(0, stats.health - 2);
+                    message = 'The snake was too strong! Lost 2 health 🐍';
+                    if (stats.health <= 0) {
+                        playerPositions[playerIndex] = 0;
+                        message = 'The snake defeated you! Back to start 🐍';
+                    }
+                }
+            } else {
+                stats.health = Math.max(0, stats.health - 1);
+                message = 'You fled but got bit! Lost 1 health 🐍';
+                if (stats.health <= 0) {
+                    playerPositions[playerIndex] = 0;
+                    message = 'The snake\'s bite was fatal! Back to start 🐍';
+                }
+            }
+            break;
+
+        case 20: // Ancient treasure
+            const treasureType = Math.floor(Math.random() * 4);
+            switch(treasureType) {
                 case 0:
-                    const goldAmount = Math.floor(Math.random() * 300) + 100;
-                    playerGold[playerIndex] += goldAmount;
-                    message = `Found ${goldAmount} gold in the chest!`;
-                    showGoldAnimation(targetCell, goldAmount);
+                    playerGold[playerIndex] += 400;
+                    message = 'Found ancient gold! +400 gold 🏆';
+                    showGoldAnimation(targetCell, 400);
                     break;
                 case 1:
-                    stats.potions += 2;
-                    message = 'Found 2 health potions in the chest!';
+                    stats.potions += 3;
+                    message = 'Found ancient potions! +3 potions 🏆';
                     break;
                 case 2:
-                    stats.strength += 1;
-                    message = 'Found a weapon! Strength +1';
+                    stats.magic += 2;
+                    message = 'Found ancient scrolls! Magic +2 🏆';
                     break;
+                case 3:
+                    stats.strength += 2;
+                    message = 'Found ancient weapons! Strength +2 🏆';
+                    break;
+            }
+            break;
+
+        case 21: // Pit trap
+            if (stats.hasMap) {
+                message = 'Your map warned you about the pit trap! 🕳️';
+            } else {
+                stats.turns = Math.max(0, (stats.turns || 0) - 1);
+                stats.health = Math.max(0, stats.health - 1);
+                message = 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
+            }
+            break;
+
+        case 22: // Sorcerer's deal
+            if (playerGold[playerIndex] >= 200 && confirm('The sorcerer offers: Pay 200 gold for +2 Magic. Accept? ⚡')) {
+                playerGold[playerIndex] -= 200;
+                stats.magic += 2;
+                message = 'The sorcerer granted you power! Magic +2 ⚡';
+            } else {
+                message = 'You declined the sorcerer\'s offer ⚡';
+            }
+            break;
+
+        case 23: // Village help
+            stats.hasAlly = true;
+            stats.strength += 2;
+            playerGold[playerIndex] += 100;
+            message = 'You saved the village! Gained an ally, Strength +2, Gold +100 🏡';
+            showGoldAnimation(targetCell, 100);
+            break;
+
+        case 24: // Magic ring
+            const wishes = ['health', 'strength', 'magic', 'gold'];
+            const wishChoice = prompt('The ring grants one wish! Choose:\n1) Health +3\n2) Strength +3\n3) Magic +3\n4) Gold +300\nEnter 1-4:');
+            
+            switch(wishChoice) {
+                case '1':
+                    stats.health += 3;
+                    message = 'Your wish for health was granted! Health +3 💍';
+                    break;
+                case '2':
+                    stats.strength += 3;
+                    message = 'Your wish for strength was granted! Strength +3 💍';
+                    break;
+                case '3':
+                    stats.magic += 3;
+                    message = 'Your wish for magic was granted! Magic +3 💍';
+                    break;
+                case '4':
+                    playerGold[playerIndex] += 300;
+                    message = 'Your wish for gold was granted! +300 gold 💍';
+                    showGoldAnimation(targetCell, 300);
+                    break;
+                default:
+                    stats.magic += 1;
+                    message = 'You failed to make a wish! Got Magic +1 instead 💍';
             }
             break;
     }

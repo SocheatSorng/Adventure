@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 // Show event message only for final position
                 if (pos === newPos) {
-                    handleColumnEvent(playerIndex, pos, targetCell, {  // Changed 'col' to 'pos'
+                    handleColumnEvent(playerIndex, pos, targetCell, {  
                         playerStats,
                         playerGold,
                         playerPositions,
@@ -377,9 +377,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         updateGoldDisplay,
                         showGoldAnimation,
                         rollDice,
-                        cellOccupancy,  // Add this
-                        TOTAL_CELLS,     // Add this
-                        movePlayer  // Pass movePlayer function
+                        cellOccupancy,
+                        TOTAL_CELLS,
+                        movePlayer,
+                        currentPlayer  // Add currentPlayer for turn handling
                     });
                 }
             }
