@@ -17,7 +17,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add gold tracking
     const playerGold = new Array(Number(playerCount)).fill(0);
 
-    // Update player indicator creation
+    // Add player stats tracking
+    const playerStats = Array(Number(playerCount)).fill().map(() => ({
+        health: 3,
+        strength: Math.floor(Math.random() * 5) + 1, // Random strength 1-5
+        potions: 0,
+        hasMap: false
+    }));
+
+    function rollDice() {
+        return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function updatePlayerStats(playerIndex) {
+        const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
+        const stats = playerStats[playerIndex];
+        const goldDisplay = wrapper.querySelector('.gold-display');
+        goldDisplay.textContent = `${playerGold[playerIndex]} Gold | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions}`;
+    }
+
+    // Update player indicator creation first
     for (let i = 1; i <= playerCount; i++) {
         const wrapper = document.createElement('div');
         wrapper.style.display = 'flex';
@@ -35,6 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
         wrapper.appendChild(indicator);
         wrapper.appendChild(goldDisplay);
         playerIndicators.appendChild(wrapper);
+    }
+
+    // Then initialize player stats displays
+    for (let i = 0; i < playerCount; i++) {
+        updatePlayerStats(i);
     }
 
     const table = document.getElementById('gameTable');
@@ -83,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = Math.floor(i / BOARD_SIZE);
             const col = i % BOARD_SIZE;
             
-            // Add error checking
             const tableRow = table.rows[row];
             if (!tableRow) {
                 console.error(`Row ${row} not found`);
@@ -96,29 +119,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 continue;
             }
 
-            // Create image placeholder
+            // Create image element
             const img = document.createElement('img');
-            img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // Transparent placeholder
-            img.dataset.src = `images/${imageNames[i]}`; // Store real image path
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            
+            // Set correct image path
+            const imagePath = `/home/socheat/Documents/Github/No-Cheat/Adventure/images/${imageNames[i]}`;
+            img.dataset.src = imagePath;
             img.alt = `Event ${i + 1}`;
+            
+            // Add error handling for images
+            img.onerror = () => {
+                console.error(`Failed to load image: ${imagePath}`);
+                img.style.backgroundColor = '#ccc'; // Fallback background color
+            };
+
             cell.appendChild(img);
 
-            // Load actual image when in viewport
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        img.src = img.dataset.src;
-                        observer.unobserve(img);
-                    }
-                });
-            });
-            observer.observe(img);
+            // Load image immediately instead of using IntersectionObserver
+            img.src = imagePath;
         }
 
         currentBatch++;
         if (currentBatch * batchSize < TOTAL_CELLS) {
-            setTimeout(loadImageBatch, 100); // Load next batch after 100ms
+            setTimeout(loadImageBatch, 100);
         }
     }
 
@@ -224,13 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
         indicators[currentPlayer - 1].classList.add('active');
     }
 
-    // Add click handler for turns
-    table.addEventListener('click', e => {
-        if (e.target.closest('img')) {
-            nextTurn();
-        }
-    });
-
     // Add player position tracking - start at position 0 instead of 1
     const playerPositions = new Array(Number(playerCount)).fill(0);
 
@@ -278,6 +297,94 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(animation);
         
         animation.addEventListener('animationend', () => animation.remove());
+    }
+
+    function showEventMessage(message) {
+        const messageEl = document.createElement('div');
+        messageEl.className = 'event-message';
+        messageEl.textContent = message;
+        document.body.appendChild(messageEl);
+        setTimeout(() => messageEl.remove(), 3000);
+    }
+
+    function handleColumnEvent(playerIndex, col, targetCell) {
+        const stats = playerStats[playerIndex];
+        let message = '';
+
+        switch(col + 1) { // Convert to 1-based column numbers
+            case 1: // Gold column
+                playerGold[playerIndex] += 50;
+                message = 'Found 50 gold!';
+                showGoldAnimation(targetCell, 50);
+                break;
+
+            case 2: // Secret map
+                if (!stats.hasMap) {
+                    stats.hasMap = true;
+                    message = 'Found a secret map!';
+                }
+                break;
+
+            case 3: // Bandit attack
+                if (stats.strength < 3) {
+                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+                    message = 'Lost to bandits! -100 gold';
+                } else {
+                    playerGold[playerIndex] += 150;
+                    message = 'Defeated bandits! +150 gold';
+                    showGoldAnimation(targetCell, 150);
+                }
+                break;
+
+            case 4: // Health loss
+                if (stats.potions > 0) {
+                    stats.potions--;
+                    message = 'Used a health potion to survive!';
+                } else {
+                    stats.health--;
+                    message = 'Lost 1 health!';
+                    if (stats.health <= 0) {
+                        playerPositions[playerIndex] = 0; // Back to start
+                        message = 'Lost all health! Back to start.';
+                    }
+                }
+                break;
+
+            case 5: // Receive potion
+                stats.potions++;
+                message = 'Received a health potion!';
+                break;
+
+            case 6: // Gambling
+                const playerRoll = rollDice();
+                const houseRoll = rollDice();
+                message = `You rolled ${playerRoll}, house rolled ${houseRoll}. `;
+                if (playerRoll > houseRoll) {
+                    playerGold[playerIndex] += 200;
+                    message += 'Won 200 gold!';
+                    showGoldAnimation(targetCell, 200);
+                } else {
+                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+                    message += 'Lost 100 gold!';
+                }
+                break;
+
+            case 7: // Trap
+                playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 50);
+                message = 'Fell into a trap! Lost 50 gold.';
+                break;
+
+            case 8: // Bridge collapse
+                playerPositions[playerIndex] = 0;
+                message = 'Bridge collapsed! Back to start.';
+                break;
+        }
+
+        if (message) {
+            showEventMessage(message);
+            updatePlayerStats(playerIndex);
+            updateGoldDisplay(playerIndex);
+        }
     }
 
     function movePlayer(playerIndex, diceResult) {
@@ -344,14 +451,8 @@ document.addEventListener('DOMContentLoaded', () => {
             token.style.top = `${50 + yOffset}%`;
             token.style.left = `${50 + xOffset}%`;
             
-            // Check if player landed on column 1 (index 0) in odd rows, or last column in even rows
-            const isGoldColumn = (row % 2 === 0) ? (col === 0) : (col === BOARD_SIZE - 1);
-            if (isGoldColumn && currentPos > 0) {
-                const goldAmount = 50;
-                playerGold[playerIndex] += goldAmount;
-                showGoldAnimation(targetCell, goldAmount);
-                updateGoldDisplay(playerIndex);
-            }
+            // Replace the old gold column check with new column events
+            handleColumnEvent(playerIndex, col, targetCell);
 
             targetCell.appendChild(token);
             playerPositions[playerIndex] = newPos;
@@ -393,9 +494,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
             if (!token.parentElement.classList.contains('td')) {
-                token.style.position = 'relative'; // Keep token visible in container
-                token.style.transform = 'none'; // Reset transform
-                tokensContainer.appendChild(token); // Keep token in waiting area
+                token.style.position = 'relative';
+                token.style.transform = 'none';
+                tokensContainer.appendChild(token);
             }
         }
 
@@ -422,16 +523,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     if (finalResult > remainingSteps) {
                         showTurnSkipMessage(remainingSteps);
-                        setTimeout(() => nextTurn(), 800); // Delay turn change until message is visible
+                        setTimeout(() => nextTurn(), 800);
                     } else {
                         if (currentPos === 0) {
-                            // Only move to first cell if the player isn't on the board yet
                             const token = playerTokens[activePlayerIndex];
-                            token.style.position = 'absolute'; // Restore absolute positioning
-                            token.style.transform = 'translate(-50%, -50%)'; // Restore centering transform
+                            token.style.position = 'absolute';
+                            token.style.transform = 'translate(-50%, -50%)';
                         }
                         const moveSuccessful = movePlayer(activePlayerIndex, finalResult);
                         if (moveSuccessful) {
+                            // Only change turns after a successful move
                             nextTurn();
                         }
                     }
@@ -501,6 +602,19 @@ document.addEventListener('DOMContentLoaded', () => {
         @keyframes goldFlash {
             0%, 100% { color: white; }
             50% { color: gold; }
+        }
+        .event-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            font-size: 18px;
+            z-index: 1000;
+            animation: fadeInOut 2s ease-in-out;
         }
     `;
     document.head.appendChild(style);
