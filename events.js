@@ -12,15 +12,19 @@ function handleColumnEvent(playerIndex, col, targetCell, {
 }) {
     const stats = playerStats[playerIndex];
     let message = '';
+    
+    // Fix grid number calculation - use position directly since it's already 0-based
+    const gridNumber = playerPositions[playerIndex] + 1;  // Convert to 1-based grid numbers
+    console.log('Current grid:', gridNumber); // Debug log
 
-    switch(col + 1) {
-        case 1: // Gold column
+    switch(gridNumber) {
+        case 1: // Gold column (first grid)
             playerGold[playerIndex] += 50;
             message = 'Found 50 gold!';
             showGoldAnimation(targetCell, 50);
             break;
 
-        case 2: // Secret map
+        case 2: // Secret map (second grid)
             if (!stats.hasMap) {
                 stats.hasMap = true;
                 message = 'Found a secret map!';
@@ -110,9 +114,63 @@ function handleColumnEvent(playerIndex, col, targetCell, {
                 cellOccupancy[0]++;
             }
             break;
+            
+        case 9: // Secret spell (ninth grid)
+            stats.magic++;
+            message = 'You learned a secret spell! Magic +1';
+            break;
+
+        case 10: // Lose turn
+            stats.turns -= 1;
+            message = 'A storm approaches! You lose 1 turn';
+            break;
+
+        case 11: // Good karma
+            stats.status = 'good karma';
+            message = 'You helped a lost child! You gain good karma';
+            break;
+
+        case 12: // Mystic sword
+            stats.strength += 2;
+            message = 'You found a mystic sword! Strength +2';
+            break;
+
+        case 13: // Thieves
+            playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+            message = 'Thieves stole your gold! Lost 100 gold';
+            break;
+
+        case 14: // Horse
+            // Move 2 extra steps
+            setTimeout(() => {
+                movePlayer(playerIndex, 2);
+                showEventMessage('Your horse carries you 2 steps further!');
+            }, 1000);
+            message = 'You tamed a horse!';
+            break;
+
+        case 15: // Riddle
+            const answers = ['A', 'B', 'C'];
+            const correctAnswer = Math.floor(Math.random() * answers.length);
+            const playerAnswer = prompt(`Solve the riddle!\nWhat goes up but never comes down?\nA) Age\nB) Growth\nC) Time\nEnter A, B, or C:`);
+            
+            if (playerAnswer && playerAnswer.toUpperCase() === answers[correctAnswer]) {
+                playerGold[playerIndex] += 200;
+                message = 'Correct answer! Won 200 gold!';
+                showGoldAnimation(targetCell, 200);
+            } else {
+                message = 'Wrong answer! Better luck next time!';
+            }
+            break;
+
+        case 16: // Rare gem
+            playerGold[playerIndex] += 500;
+            message = 'Found a rare gem! Gained 500 gold!';
+            showGoldAnimation(targetCell, 500);
+            break;
     }
 
-    if (message && col + 1 !== 4) {
+    if (message && gridNumber !== 4) {
         showEventMessage(message);
         updatePlayerStats(playerIndex);
         updateGoldDisplay(playerIndex);

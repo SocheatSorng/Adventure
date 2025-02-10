@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
         health: 0,
         strength: 0,
         potions: 0,
-        hasMap: false
+        hasMap: false,
+        magic: 0  // Add magic stat properly
     }));
 
     function rollDice() {
@@ -31,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePlayerStats(playerIndex) {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
+        const goldDisplay = wrapper.querySelector('.gold-display');  // Get the goldDisplay element
         const stats = playerStats[playerIndex];
-        const goldDisplay = wrapper.querySelector('.gold-display');
         const mapIcon = stats.hasMap ? '🗺️' : '❌';  // Show ❌ when no map, 🗺️ when has map
         goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | ${mapIcon}`;
     }
@@ -57,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         playerIndicators.appendChild(wrapper);
     }
 
-    // Then initialize player stats displays
     for (let i = 0; i < playerCount; i++) {
         updatePlayerStats(i);
     }
@@ -284,8 +284,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
         const goldDisplay = wrapper.querySelector('.gold-display');
         const stats = playerStats[playerIndex];
-        const mapIcon = stats.hasMap ? '🗺️' : '❌';  // Show ❌ when no map, 🗺️ when has map
-        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | ${mapIcon}`;
+        const mapIcon = stats.hasMap ? '🗺️' : '❌';
+        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | 🔮${stats.magic} | ${mapIcon}`;
         goldDisplay.classList.add('gold-flash');
         setTimeout(() => goldDisplay.classList.remove('gold-flash'), 500);
     }
@@ -298,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         animation.style.left = `${rect.left + rect.width/2}px`;
         animation.style.top = `${rect.top + rect.height/2}px`;
         document.body.appendChild(animation);
-        
         animation.addEventListener('animationend', () => animation.remove());
     }
 
@@ -313,63 +312,60 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Invalid player index:', playerIndex);
             return false;
         }
-
         if (diceResult < 1 || diceResult > 6) {
             console.error('Invalid dice result:', diceResult);
             return false;
         }
-
         const currentPos = playerPositions[playerIndex];
-        
-        // Reset position calculation when starting from 0
         let newPos;
+        // Reset position if player was sent back to start
         if (currentPos === 0) {
-            newPos = diceResult - 1; // Subtract 1 since we're using 0-based indexing
+            newPos = diceResult - 1;  // First cell is index 0
+            // Reset occupancy for this player
+            cellOccupancy.fill(0);
+            // Clear any existing token placements
+            const allCells = document.querySelectorAll('td');
+            allCells.forEach(cell => {
+                const playerToken = cell.querySelector(`.player${playerIndex + 1}`);
+                if (playerToken) {
+                    cell.removeChild(playerToken);
+                }
+            });
         } else {
             newPos = Math.min(currentPos + diceResult, TOTAL_CELLS - 1);
         }
-        
         try {
             const token = playerTokens[playerIndex];
             token.classList.add('token-moving');
-
             // Clear old position's occupancy
             if (currentPos > 0) {
                 cellOccupancy[currentPos]--;
             }
-
             // Reset position for animation
-            let startPos = currentPos === 0 ? 0 : currentPos + 1;
-            
+            let startPos = currentPos === 0 ? 0 : currentPos;  // Changed from currentPos + 1
+            // Update position before animation
+            playerPositions[playerIndex] = newPos;  // Move this line here
             // Animate through each step
             for (let pos = startPos; pos <= newPos; pos++) {
                 const row = Math.floor(pos / BOARD_SIZE);
                 const col = pos % BOARD_SIZE;
-                
                 const targetCell = table.rows[row].cells[col];
-                
                 // Update occupancy for intermediate positions
                 if (pos > currentPos + 1) {
                     cellOccupancy[pos - 1]--;
                 }
                 cellOccupancy[pos]++;
-                
                 // Position token
                 const position = cellOccupancy[pos] - 1;
                 const angle = (position * (360 / 4)) * (Math.PI / 180);
                 const radius = 20;
-                
                 const xOffset = Math.cos(angle) * radius;
                 const yOffset = Math.sin(angle) * radius;
-                
                 token.style.top = `${50 + yOffset}%`;
                 token.style.left = `${50 + xOffset}%`;
-                
                 targetCell.appendChild(token);
-                
                 // Wait for animation
                 await new Promise(resolve => setTimeout(resolve, 500));
-                
                 // Show event message only for final position
                 if (pos === newPos) {
                     handleColumnEvent(playerIndex, col, targetCell, {
@@ -386,10 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             }
-
             token.classList.remove('token-moving');
-            playerPositions[playerIndex] = newPos;
-            
             if (newPos === TOTAL_CELLS - 1) {
                 setTimeout(() => alert(`Player ${playerIndex + 1} wins!`), 100);
             }
@@ -410,21 +403,17 @@ document.addEventListener('DOMContentLoaded', () => {
         message.className = 'turn-skip-message';
         message.textContent = `Need exactly ${remainingSteps} steps to win!`;
         document.body.appendChild(message);
-        
         // Remove the message element after animation completes
         setTimeout(() => {
             message.remove();
         }, 3000);
     }
-    
+
     diceIcon.addEventListener('click', () => {
         if (isRolling) return;
-        
         showEventMessage('Rolling...');  // Show rolling message
-
         const activePlayerIndex = currentPlayer - 1;
         const currentPos = playerPositions[activePlayerIndex];
-
         // Update token placement logic
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
@@ -434,13 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 tokensContainer.appendChild(token);
             }
         }
-
         const remainingSteps = TOTAL_CELLS - currentPos;
-        
         isRolling = true;
         diceIcon.classList.add('dice-roll');
         diceResult.classList.remove('show');
-        
         let rolls = 0;
         const maxRolls = 10;
         const rollInterval = setInterval(() => {
@@ -448,13 +434,11 @@ document.addEventListener('DOMContentLoaded', () => {
             diceResult.textContent = tempResult;
             diceResult.classList.add('show');
             rolls++;
-            
             if (rolls >= maxRolls) {
                 clearInterval(rollInterval);
                 const finalResult = Math.floor(Math.random() * 6) + 1;
                 diceResult.textContent = finalResult;
                 diceIcon.classList.remove('dice-roll');
-                
                 setTimeout(async () => {
                     if (finalResult > remainingSteps) {
                         showTurnSkipMessage(remainingSteps);
@@ -479,19 +463,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add function to handle manual step input
     function handleManualStep(steps) {
         if (isRolling) return;
-        
         showEventMessage('Moving...');  // Show moving message
-
         const activePlayerIndex = currentPlayer - 1;
         const currentPos = playerPositions[activePlayerIndex];
-
         // Validate input
         steps = parseInt(steps);
         if (isNaN(steps) || steps < 1 || steps > 6) {
             console.log('Invalid input. Please enter a number between 1 and 6.');
             return;
         }
-
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
             if (!token.parentElement.classList.contains('td')) {
@@ -500,25 +480,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 tokensContainer.appendChild(token);
             }
         }
-
         const remainingSteps = TOTAL_CELLS - currentPos;
-        
         if (steps > remainingSteps) {
             showTurnSkipMessage(remainingSteps);
             setTimeout(() => nextTurn(), 800);
             return;
         }
-
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
             token.style.position = 'absolute';
             token.style.transform = 'translate(-50%, -50%)';
         }
-
         // Update dice display
         diceResult.textContent = steps;
         diceResult.classList.add('show');
-
         movePlayer(activePlayerIndex, steps).then(moveSuccessful => {
             if (moveSuccessful) {
                 nextTurn();
