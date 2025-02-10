@@ -1,4 +1,4 @@
-function handleColumnEvent(playerIndex, col, targetCell, {
+function handleColumnEvent(playerIndex, position, targetCell, {
     playerStats,
     playerGold,
     playerPositions,
@@ -7,14 +7,15 @@ function handleColumnEvent(playerIndex, col, targetCell, {
     updateGoldDisplay,
     showGoldAnimation,
     rollDice,
-    cellOccupancy,  // Add this parameter
-    TOTAL_CELLS     // Add this parameter
+    cellOccupancy,
+    TOTAL_CELLS,
+    movePlayer  // Add movePlayer to the parameters
 }) {
     const stats = playerStats[playerIndex];
     let message = '';
     
-    // Fix grid number calculation - use position directly since it's already 0-based
-    const gridNumber = playerPositions[playerIndex] + 1;  // Convert to 1-based grid numbers
+    // Calculate grid number directly from position (1-based)
+    const gridNumber = position + 1;
     console.log('Current grid:', gridNumber); // Debug log
 
     switch(gridNumber) {
@@ -167,6 +168,49 @@ function handleColumnEvent(playerIndex, col, targetCell, {
             playerGold[playerIndex] += 500;
             message = 'Found a rare gem! Gained 500 gold!';
             showGoldAnimation(targetCell, 500);
+            break;
+
+        case 17: // Lost in forest
+            stats.turns = Math.max(0, (stats.turns || 0) - 1);
+            message = 'Lost in the forest! Skip 1 turn';
+            break;
+
+        case 18: // Snake encounter
+            if (confirm('A snake appears! Do you want to fight it? (OK to fight, Cancel to run)')) {
+                if (stats.strength > 4) {
+                    message = 'You defeated the snake with your strength!';
+                } else {
+                    stats.health--;
+                    message = 'The snake bit you! Lost 1 health';
+                    if (stats.health <= 0) {
+                        playerPositions[playerIndex] = 0;
+                        message = 'You lost all health! Back to start.';
+                    }
+                }
+            } else {
+                stats.health--;
+                message = 'You ran but got bit! Lost 1 health';
+            }
+            break;
+
+        case 20: // Treasure chest
+            const lootType = Math.floor(Math.random() * 3);
+            switch(lootType) {
+                case 0:
+                    const goldAmount = Math.floor(Math.random() * 300) + 100;
+                    playerGold[playerIndex] += goldAmount;
+                    message = `Found ${goldAmount} gold in the chest!`;
+                    showGoldAnimation(targetCell, goldAmount);
+                    break;
+                case 1:
+                    stats.potions += 2;
+                    message = 'Found 2 health potions in the chest!';
+                    break;
+                case 2:
+                    stats.strength += 1;
+                    message = 'Found a weapon! Strength +1';
+                    break;
+            }
             break;
     }
 
