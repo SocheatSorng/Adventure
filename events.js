@@ -1,4 +1,4 @@
-export function handleColumnEvent(playerIndex, col, targetCell, {
+function handleColumnEvent(playerIndex, col, targetCell, {
     playerStats,
     playerGold,
     playerPositions,
@@ -6,7 +6,9 @@ export function handleColumnEvent(playerIndex, col, targetCell, {
     updatePlayerStats,
     updateGoldDisplay,
     showGoldAnimation,
-    rollDice
+    rollDice,
+    cellOccupancy,  // Add this parameter
+    TOTAL_CELLS     // Add this parameter
 }) {
     const stats = playerStats[playerIndex];
     let message = '';
@@ -58,33 +60,55 @@ export function handleColumnEvent(playerIndex, col, targetCell, {
             showEventMessage(message);
             break;
 
-        case 5: // Receive potion
+        case 5: // Health gain and potion
+            stats.health++;
             stats.potions++;
-            message = 'Received a health potion!';
+            message = 'Gained 1 health and received a potion!';
             break;
 
-        case 6: // Gambling
+        case 6: // Gambling with two dice
+            // Player's turn
             const playerRoll = rollDice();
-            const houseRoll = rollDice();
-            message = `You rolled ${playerRoll}, house rolled ${houseRoll}. `;
-            if (playerRoll > houseRoll) {
-                playerGold[playerIndex] += 200;
-                message += 'Won 200 gold!';
-                showGoldAnimation(targetCell, 200);
-            } else {
-                playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
-                message += 'Lost 100 gold!';
-            }
-            break;
+            message = `You rolled ${playerRoll}... `;
+            
+            // Short pause before computer roll
+            setTimeout(() => {
+                const houseRoll = rollDice();
+                if (playerRoll > houseRoll) {
+                    playerGold[playerIndex] += 200;
+                    message += `Computer rolled ${houseRoll}. You won 200 gold!`;
+                    showGoldAnimation(targetCell, 200);
+                } else {
+                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+                    message += `Computer rolled ${houseRoll}. You lost 100 gold!`;
+                }
+                showEventMessage(message);
+                updatePlayerStats(playerIndex);
+                updateGoldDisplay(playerIndex);
+            }, 1000);
+            return; // Exit early due to async nature
 
         case 7: // Trap
             playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 50);
             message = 'Fell into a trap! Lost 50 gold.';
             break;
 
-        case 8: // Bridge collapse
-            playerPositions[playerIndex] = 0;
+        case 8: // Bridge collapse - back to start
             message = 'Bridge collapsed! Back to start.';
+            
+            // Move token back to start
+            const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+            if (token) {
+                const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
+                startCell.appendChild(token);
+                token.style.top = '50%';
+                token.style.left = '50%';
+                
+                // Reset player position to start (0)
+                playerPositions[playerIndex] = 0;
+                cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
+                cellOccupancy[0]++;
+            }
             break;
     }
 

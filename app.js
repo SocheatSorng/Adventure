@@ -307,98 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
         eventDisplay.textContent = message || 'Roll the dice to move!';  // Default message when empty
     }
 
-    function handleColumnEvent(playerIndex, col, targetCell) {
-        const stats = playerStats[playerIndex];
-        let message = '';
-
-        switch(col + 1) { // Convert to 1-based column numbers
-            case 1: // Gold column
-                playerGold[playerIndex] += 50;
-                message = 'Found 50 gold!';
-                showGoldAnimation(targetCell, 50);
-                break;
-
-            case 2: // Secret map
-                if (!stats.hasMap) {
-                    stats.hasMap = true;
-                    message = 'Found a secret map!';
-                    // Add map animation
-                    const mapAnimation = document.createElement('div');
-                    mapAnimation.className = 'map-animation';
-                    mapAnimation.innerHTML = '🗺️';
-                    targetCell.appendChild(mapAnimation);
-                    setTimeout(() => mapAnimation.remove(), 1000);
-                }
-                break;
-
-            case 3: // Bandit attack
-                if (stats.strength < 3) {
-                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
-                    message = 'Lost to bandits! -100 gold';
-                } else {
-                    playerGold[playerIndex] += 150;
-                    message = 'Defeated bandits! +150 gold';
-                    showGoldAnimation(targetCell, 150);
-                }
-                break;
-
-            case 4: // Health loss
-                if (stats.potions > 0) {
-                    stats.potions--;
-                    message = 'Used a health potion to survive!';
-                } else if (stats.health > 0) {  // Only reduce health if it's greater than 0
-                    stats.health--;
-                    message = 'Lost 1 health!';
-                    if (stats.health === 0) {  // Changed from <= 0 to === 0
-                        playerPositions[playerIndex] = 0; // Back to start
-                        message = 'Lost all health! Back to start.';
-                    }
-                } else {
-                    message = 'Already at 0 health!';  // Add message for when health is 0
-                }
-                showEventMessage(message);  // Show message immediately
-                break;
-
-            case 5: // Receive potion
-                stats.potions++;
-                message = 'Received a health potion!';
-                break;
-
-            case 6: // Gambling
-                const playerRoll = rollDice();
-                const houseRoll = rollDice();
-                message = `You rolled ${playerRoll}, house rolled ${houseRoll}. `;
-                if (playerRoll > houseRoll) {
-                    playerGold[playerIndex] += 200;
-                    message += 'Won 200 gold!';
-                    showGoldAnimation(targetCell, 200);
-                } else {
-                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
-                    message += 'Lost 100 gold!';
-                }
-                break;
-
-            case 7: // Trap
-                playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 50);
-                message = 'Fell into a trap! Lost 50 gold.';
-                break;
-
-            case 8: // Bridge collapse
-                playerPositions[playerIndex] = 0;
-                message = 'Bridge collapsed! Back to start.';
-                break;
-        }
-
-        if (message && col + 1 !== 4) {  // Don't show message twice for health loss
-            showEventMessage(message);
-            updatePlayerStats(playerIndex);
-            updateGoldDisplay(playerIndex);
-        } else {
-            updatePlayerStats(playerIndex);
-            updateGoldDisplay(playerIndex);
-        }
-    }
-
     async function movePlayer(playerIndex, diceResult) {
         // Validate inputs
         if (playerIndex < 0 || playerIndex >= playerCount) {
@@ -412,14 +320,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const currentPos = playerPositions[playerIndex];
-        const newPos = Math.min(currentPos + diceResult, TOTAL_CELLS - 1);
+        
+        // Reset position calculation when starting from 0
+        let newPos;
+        if (currentPos === 0) {
+            newPos = diceResult - 1; // Subtract 1 since we're using 0-based indexing
+        } else {
+            newPos = Math.min(currentPos + diceResult, TOTAL_CELLS - 1);
+        }
         
         try {
             const token = playerTokens[playerIndex];
             token.classList.add('token-moving');
 
+            // Clear old position's occupancy
+            if (currentPos > 0) {
+                cellOccupancy[currentPos]--;
+            }
+
+            // Reset position for animation
+            let startPos = currentPos === 0 ? 0 : currentPos + 1;
+            
             // Animate through each step
-            for (let pos = currentPos + 1; pos <= newPos; pos++) {
+            for (let pos = startPos; pos <= newPos; pos++) {
                 const row = Math.floor(pos / BOARD_SIZE);
                 const col = pos % BOARD_SIZE;
                 
@@ -449,7 +372,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Show event message only for final position
                 if (pos === newPos) {
-                    handleColumnEvent(playerIndex, col, targetCell);
+                    handleColumnEvent(playerIndex, col, targetCell, {
+                        playerStats,
+                        playerGold,
+                        playerPositions,
+                        showEventMessage,
+                        updatePlayerStats,
+                        updateGoldDisplay,
+                        showGoldAnimation,
+                        rollDice,
+                        cellOccupancy,  // Add this
+                        TOTAL_CELLS     // Add this
+                    });
                 }
             }
 
