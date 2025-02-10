@@ -43,15 +43,16 @@ td img[src^="data:image"] {
 
 .magnifier {
     position: fixed;
-    width: 200px;
-    height: 200px;
-    border: 3px solid #333;
+    width: 150px;  /* Reduced from 200px */
+    height: 150px; /* Reduced from 200px */
+    border: 2px solid #333; /* Reduced border width from 3px */
     border-radius: 50%;
     pointer-events: none;
     display: none;
     background-repeat: no-repeat;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    box-shadow: 0 0 8px rgba(0,0,0,0.2); /* Reduced shadow */
     z-index: 1000;
+    transition: left 0.1s ease-out, top 0.1s ease-out;
 }
 
 .player-selection {
@@ -105,6 +106,58 @@ td img[src^="data:image"] {
     background: #fff;
     border: 2px solid #333;
     border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+}
+
+.gold-display {
+    margin-top: 4px;
+    padding: 2px 8px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: #FFD700;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.gold-amount {
+    font-size: 0.8rem;
+    color: #FFD700;
+    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+.gold-animation {
+    position: fixed;
+    color: #FFD700;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 1000;
+    animation: floatGold 1.5s ease-out forwards;
+    text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes floatGold {
+    0% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+}
+
+.gold-flash {
+    animation: goldFlash 0.5s ease-out;
+}
+
+@keyframes goldFlash {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
 }
 
 .player-indicator.active {
@@ -281,4 +334,33 @@ td img[src^="data:image"] {
         transform: translate(-50%, -50%) scale(0.8);
         opacity: 0;
     }
+}
+
+.game-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.control-button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.control-button:hover {
+    background: #45a049;
+    transform: scale(1.1);
+}
+
+.control-button.active {
+    background: #ff5722;
 }
