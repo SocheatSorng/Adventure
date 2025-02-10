@@ -116,11 +116,10 @@ td img[src^="data:image"] {
 .gold-display {
     margin-top: 4px;
     padding: 2px 8px;
-    background: rgba(255, 215, 0, 0.1);
+    background: rgba(76, 175, 80, 0.1);  /* Light green background */
     border-radius: 4px;
     font-size: 0.8rem;
-    color: #FFD700;
-    text-shadow: 0 0 2px rgba(0,0,0,0.5);
+    color: #4CAF50;  /* Green color */
 }
 
 .gold-amount {
@@ -341,6 +340,27 @@ td img[src^="data:image"] {
     }
     100% {
         transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+}
+
+.map-animation {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    animation: mapFound 1s ease-out forwards;
+    z-index: 100;
+}
+
+@keyframes mapFound {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -100%) scale(1.5);
         opacity: 0;
     }
 }

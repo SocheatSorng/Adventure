@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add player stats tracking
     const playerStats = Array(Number(playerCount)).fill().map(() => ({
-        health: 3,
-        strength: Math.floor(Math.random() * 5) + 1, // Random strength 1-5
+        health: 0,
+        strength: 0,
         potions: 0,
         hasMap: false
     }));
@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
         const stats = playerStats[playerIndex];
         const goldDisplay = wrapper.querySelector('.gold-display');
-        goldDisplay.textContent = `${playerGold[playerIndex]} Gold | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions}`;
+        const mapIcon = stats.hasMap ? '🗺️' : '❌';  // Show ❌ when no map, 🗺️ when has map
+        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | ${mapIcon}`;
     }
 
     // Update player indicator creation first
@@ -49,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const goldDisplay = document.createElement('div');
         goldDisplay.className = 'gold-display';
-        goldDisplay.textContent = '0 Gold';
+        goldDisplay.textContent = '0 🪙';
         
         wrapper.appendChild(indicator);
         wrapper.appendChild(goldDisplay);
@@ -282,7 +283,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateGoldDisplay(playerIndex) {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
         const goldDisplay = wrapper.querySelector('.gold-display');
-        goldDisplay.textContent = `${playerGold[playerIndex]} Gold`;
+        const stats = playerStats[playerIndex];
+        const mapIcon = stats.hasMap ? '🗺️' : '❌';  // Show ❌ when no map, 🗺️ when has map
+        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | ${mapIcon}`;
         goldDisplay.classList.add('gold-flash');
         setTimeout(() => goldDisplay.classList.remove('gold-flash'), 500);
     }
@@ -291,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = cell.getBoundingClientRect();
         const animation = document.createElement('div');
         animation.className = 'gold-animation';
-        animation.textContent = `+${amount} Gold!`;
+        animation.textContent = `+${amount} 🪙`;
         animation.style.left = `${rect.left + rect.width/2}px`;
         animation.style.top = `${rect.top + rect.height/2}px`;
         document.body.appendChild(animation);
@@ -319,6 +322,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!stats.hasMap) {
                     stats.hasMap = true;
                     message = 'Found a secret map!';
+                    // Add map animation
+                    const mapAnimation = document.createElement('div');
+                    mapAnimation.className = 'map-animation';
+                    mapAnimation.innerHTML = '🗺️';
+                    targetCell.appendChild(mapAnimation);
+                    setTimeout(() => mapAnimation.remove(), 1000);
                 }
                 break;
 
@@ -337,14 +346,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (stats.potions > 0) {
                     stats.potions--;
                     message = 'Used a health potion to survive!';
-                } else {
+                } else if (stats.health > 0) {  // Only reduce health if it's greater than 0
                     stats.health--;
                     message = 'Lost 1 health!';
-                    if (stats.health <= 0) {
+                    if (stats.health === 0) {  // Changed from <= 0 to === 0
                         playerPositions[playerIndex] = 0; // Back to start
                         message = 'Lost all health! Back to start.';
                     }
+                } else {
+                    message = 'Already at 0 health!';  // Add message for when health is 0
                 }
+                showEventMessage(message);  // Show message immediately
                 break;
 
             case 5: // Receive potion
@@ -377,8 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 break;
         }
 
-        if (message) {
+        if (message && col + 1 !== 4) {  // Don't show message twice for health loss
             showEventMessage(message);
+            updatePlayerStats(playerIndex);
+            updateGoldDisplay(playerIndex);
+        } else {
             updatePlayerStats(playerIndex);
             updateGoldDisplay(playerIndex);
         }
