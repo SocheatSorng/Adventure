@@ -224,3 +224,61 @@ td img[src^="data:image"] {
 .icon-option i {
     font-size: 24px;
 }
+
+.player-token {
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.player1 { background-color: #FF4136; box-shadow: 0 0 5px rgba(255, 65, 54, 0.5); }
+.player2 { background-color: #2ECC40; box-shadow: 0 0 5px rgba(46, 204, 64, 0.5); }
+.player3 { background-color: #0074D9; box-shadow: 0 0 5px rgba(0, 116, 217, 0.5); }
+.player4 { background-color: #FF851B; box-shadow: 0 0 5px rgba(255, 133, 27, 0.5); }
+
+.turn-skip-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    z-index: 1000;
+    opacity: 0;
+    animation: messagePopup 1.5s ease-in-out forwards;
+}
+
+@keyframes messagePopup {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    20% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 1;
+    }
+    40% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    80% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 0;
+    }
+}
