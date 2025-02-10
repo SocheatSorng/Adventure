@@ -1,7 +1,7 @@
 .table-container {
     flex: 1;
     display: flex;
-    justify-content: center;
+    flex-direction: column;  /* Change to column to stack elements vertically */
     align-items: center;
     padding: 20px;
 }
@@ -291,7 +291,16 @@ td img[src^="data:image"] {
     justify-content: center;
     color: white;
     font-weight: bold;
-    transition: all 0.3s ease;
+    transition: all 0.5s ease;  /* Smooth movement transition */
+}
+
+.token-moving {
+    animation: tokenBounce 0.5s ease infinite alternate;
+}
+
+@keyframes tokenBounce {
+    from { transform: translate(-50%, -50%) scale(1); }
+    to { transform: translate(-50%, -50%) scale(1.2); }
 }
 
 .player1 { background-color: #FF4136; box-shadow: 0 0 5px rgba(255, 65, 54, 0.5); }
@@ -336,29 +345,6 @@ td img[src^="data:image"] {
     }
 }
 
-.event-message-box {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto 20px;
-    padding: 15px 20px;
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    text-align: center;
-    font-size: 18px;
-    border-radius: 8px;
-    min-height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-.event-message-box.highlight {
-    background-color: rgba(74, 175, 80, 0.9);
-    transform: scale(1.02);
-}
-
 .game-controls {
     display: flex;
     align-items: center;
@@ -386,4 +372,21 @@ td img[src^="data:image"] {
 
 .control-button.active {
     background: #ff5722;
+}
+
+.event-display {
+    width: 100%;
+    max-width: 640px;  /* Match table width (8 cells * 80px) */
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 20px;
+    min-height: 60px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 5px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;  /* Always visible */
 }
