@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>8x8 Table</title>
+    <title>Adventure Game - Player Selection</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="table-container">
-        <div id="magnifier" class="magnifier"></div>
-        <table id="gameTable">
-            <tbody>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-                <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            </tbody>
-        </table>
+    <div class="player-selection">
+        <h1>Adventure Game</h1>
+        <div class="selection-buttons">
+            <button onclick="startGame(1)">Single Player</button>
+            <button onclick="startGame(2)">2 Players</button>
+            <button onclick="startGame(4)">4 Players</button>
+        </div>
     </div>
-    <script src="app.js"></script>
+    <script>
+        function startGame(players) {
+            localStorage.setItem('playerCount', players);
+            window.location.href = 'game.html';
+        }
+    </script>
 </body>
 </html>
