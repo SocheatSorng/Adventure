@@ -336,6 +336,29 @@ td img[src^="data:image"] {
     }
 }
 
+.event-message-box {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto 20px;
+    padding: 15px 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    text-align: center;
+    font-size: 18px;
+    border-radius: 8px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.event-message-box.highlight {
+    background-color: rgba(74, 175, 80, 0.9);
+    transform: scale(1.02);
+}
+
 .game-controls {
     display: flex;
     align-items: center;
