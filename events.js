@@ -15,9 +15,44 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     const stats = playerStats[playerIndex];
     let message = '';
     
+    // Helper function to send player back to start
+    function sendPlayerToStart() {
+        playerPositions[playerIndex] = 0;
+        const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
+        const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+        if (token) {
+            startCell.appendChild(token);
+            token.style.top = '50%';
+            token.style.left = '50%';
+            cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
+            cellOccupancy[0]++;
+        }
+    }
+
+    // Helper function to check health and return to start if needed
+    function checkHealth() {
+        // Initialize health if undefined
+        if (typeof stats.health === 'undefined') {
+            stats.health = 0;
+        }
+        
+        // Only send to start if health is explicitly 0
+        if (stats.health <= 0) {
+            stats.health = 0; // Ensure health doesn't go negative
+            sendPlayerToStart();
+            return 'You lost all health! Back to start.';
+        }
+        return null;
+    }
+
     // Calculate grid number directly from position (1-based)
     const gridNumber = position + 1;
     console.log('Current grid:', gridNumber); // Debug log
+
+    // Initialize health if undefined before any event
+    if (typeof stats.health === 'undefined') {
+        stats.health = 0;
+    }
 
     switch(gridNumber) {
         case 1: // Gold column (first grid)
@@ -55,13 +90,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 message = 'Used a health potion to survive!';
             } else if (stats.health > 0) {
                 stats.health--;
-                message = 'Lost 1 health!';
-                if (stats.health === 0) {
-                    playerPositions[playerIndex] = 0;
-                    message = 'Lost all health! Back to start.';
-                }
+                message = checkHealth() || 'Lost 1 health!';
             } else {
                 message = 'Already at 0 health!';
+                sendPlayerToStart();
             }
             showEventMessage(message);
             break;
@@ -129,7 +161,15 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 11: // Good karma
             stats.status = 'good karma';
-            message = 'You helped a lost child! You gain good karma';
+            message = 'You helped a lost child! You gain good karma 😇';
+            
+            // Create floating animation for karma icon
+            const karmaAnimation = document.createElement('div');
+            karmaAnimation.className = 'map-animation';
+            karmaAnimation.innerHTML = '😇';
+            karmaAnimation.style.fontSize = '24px';  // Make emoji bigger
+            targetCell.appendChild(karmaAnimation);
+            setTimeout(() => karmaAnimation.remove(), 1000);
             break;
 
         case 12: // Mystic sword
@@ -191,24 +231,39 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 19: // Snake encounter
-            if (confirm('A huge snake blocks your path! Fight it? (OK to fight, Cancel to flee) 🐍')) {
-                if (stats.strength >= 3) {
+            const requiredStrength = 3;
+            const playerChoice = confirm(
+                `A huge snake blocks your path! 🐍\n` +
+                `Your Strength: ${stats.strength}\n` +
+                `Required Strength to win: ${requiredStrength}\n\n` +
+                `Fight the snake? (OK to fight, Cancel to flee)\n` +
+                `Warning: You'll lose 2 health if you lose the fight!`
+            );
+            
+            if (playerChoice) {
+                if (stats.strength >= requiredStrength) {
                     stats.strength++;
                     message = 'You defeated the snake! Strength +1 🐍';
                 } else {
+                    // First reduce health
                     stats.health = Math.max(0, stats.health - 2);
-                    message = 'The snake was too strong! Lost 2 health 🐍';
+                    // Then check if player should return to start
                     if (stats.health <= 0) {
-                        playerPositions[playerIndex] = 0;
+                        sendPlayerToStart();
                         message = 'The snake defeated you! Back to start 🐍';
+                    } else {
+                        message = 'The snake was too strong! Lost 2 health 🐍';
                     }
                 }
             } else {
+                // First reduce health
                 stats.health = Math.max(0, stats.health - 1);
-                message = 'You fled but got bit! Lost 1 health 🐍';
+                // Then check if player should return to start
                 if (stats.health <= 0) {
-                    playerPositions[playerIndex] = 0;
+                    sendPlayerToStart();
                     message = 'The snake\'s bite was fatal! Back to start 🐍';
+                } else {
+                    message = 'You fled but got bit! Lost 1 health 🐍';
                 }
             }
             break;
@@ -242,7 +297,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             } else {
                 stats.turns = Math.max(0, (stats.turns || 0) - 1);
                 stats.health = Math.max(0, stats.health - 1);
-                message = 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
+                message = checkHealth() || 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
             }
             break;
 
@@ -291,6 +346,138 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     message = 'You failed to make a wish! Got Magic +1 instead 💍';
             }
             break;
+
+        case 25: // Cross the river
+            if (stats.strength >= 5) {
+                stats.strength++;
+                message = 'You crossed the river safely! Strength +1';
+            } else {
+                stats.health = Math.max(0, stats.health - 1);
+                message = checkHealth() || 'Too weak to cross! Lost 1 health';
+            }
+            break;
+
+        case 26: // Rescue traveler
+            if (stats.strength >= 2) {
+                playerGold[playerIndex] += 400;
+                message = 'Rescued a trapped traveler! Gained 400 Gold 🦸';
+                showGoldAnimation(targetCell, 400);
+            } else {
+                message = 'Not strong enough to help the traveler 😢';
+            }
+            break;
+
+        case 27: // Mysterious Fog
+            if (!stats.hasMap) {
+                stats.turns = Math.max(0, (stats.turns || 0) - 1);
+                message = 'Lost in mysterious fog! Skip 1 turn 🌫️';
+            } else {
+                message = 'Your map helped you navigate through the fog! 🗺️';
+            }
+            break;
+
+        case 28: // Abandoned ship
+            if (stats.hasMap) {
+                const shipLoot = Math.floor(Math.random() * 300) + 200; // 200-500 gold
+                playerGold[playerIndex] += shipLoot;
+                message = `Found ${shipLoot} Gold on the abandoned ship! 🚢`;
+                showGoldAnimation(targetCell, shipLoot);
+            } else {
+                const smallLoot = Math.floor(Math.random() * 100) + 50; // 50-150 gold
+                playerGold[playerIndex] += smallLoot;
+                message = `Found ${smallLoot} Gold on the ship. Map would help find more! ⛵`;
+                showGoldAnimation(targetCell, smallLoot);
+            }
+            break;
+
+        case 29: // Dragon encounter
+            const dragonChoice = confirm(
+                `A fierce dragon blocks your path! 🐲\n` +
+                `Your Strength: ${stats.strength}\n` +
+                `Required Strength: 6\n` +
+                `Current Gold: ${playerGold[playerIndex]}\n` +
+                `Bribe Cost: 500\n\n` +
+                `Fight the dragon? (OK to fight, Cancel to bribe)`
+            );
+            
+            if (dragonChoice) {
+                if (stats.strength >= 6 || stats.hasAlly) {
+                    message = stats.hasAlly ? 
+                        'You and your ally defeated the dragon! 🐲⚔️' :
+                        'You defeated the dragon with your strength! 🐲⚔️';
+                    stats.strength += 2;
+                } else {
+                    playerPositions[playerIndex] = 0;
+                    message = 'The dragon was too powerful! Back to start 🐲';
+                }
+            } else {
+                if (playerGold[playerIndex] >= 500) {
+                    playerGold[playerIndex] -= 500;
+                    message = 'Paid 500 Gold to appease the dragon 🐲💰';
+                } else {
+                    playerPositions[playerIndex] = 0;
+                    message = 'Not enough gold to bribe! Back to start 🐲';
+                }
+            }
+            break;
+
+        case 30: // Cursed Temple
+            if (stats.magic >= 2) {
+                playerGold[playerIndex] += 1000;
+                message = 'Your magic protected you! Found 1,000 Gold! 🏛️✨';
+                showGoldAnimation(targetCell, 1000);
+            } else if (confirm('Risk losing 1 Health for 1,000 Gold? 🏛️')) {
+                playerGold[playerIndex] += 1000;
+                stats.health--;
+                message = 'Gained 1,000 Gold but lost 1 Health! 🏛️';
+                showGoldAnimation(targetCell, 1000);
+                const healthCheck = checkHealth();
+                if (healthCheck) message = healthCheck;
+            } else {
+                message = 'Wisely avoided the cursed temple 🏛️';
+            }
+            break;
+
+        case 31: // Fairy Blessing
+            const blessing = Math.floor(Math.random() * 3);
+            switch(blessing) {
+                case 0:
+                    stats.health++;
+                    message = 'A fairy blessed you with health! +1 HP 🧚‍♀️❤️';
+                    break;
+                case 1:
+                    stats.magic++;
+                    message = 'A fairy blessed you with magic! Magic +1 🧚‍♀️✨';
+                    break;
+                case 2:
+                    stats.potions++;
+                    message = 'A fairy gave you a potion! +1 Potion 🧚‍♀️🧪';
+                    break;
+            }
+            break;
+
+        case 32: // Strange noises
+            if (stats.magic > 0) {
+                message = 'Your magic warded off the danger! 🌟';
+            } else {
+                const danger = Math.random() < 0.5;
+                if (danger) {
+                    stats.health--;
+                    message = checkHealth() || 'Surprise attack in the night! Lost 1 health 🌙';
+                } else {
+                    message = 'Strange noises in the night... but nothing happened 🌙';
+                }
+            }
+            break;
+    }
+
+    // Only check health at the end if we modified health in this event
+    const healthModifyingGrids = [4, 19, 21]; // Add all grids that modify health
+    if (healthModifyingGrids.includes(gridNumber)) {
+        const healthCheck = checkHealth();
+        if (healthCheck) {
+            message = healthCheck;
+        }
     }
 
     if (message && gridNumber !== 4) {

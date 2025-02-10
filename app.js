@@ -32,10 +32,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePlayerStats(playerIndex) {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
-        const goldDisplay = wrapper.querySelector('.gold-display');  // Get the goldDisplay element
+        const goldDisplay = wrapper.querySelector('.gold-display');
         const stats = playerStats[playerIndex];
-        const mapIcon = stats.hasMap ? '🗺️' : '❌';  // Show ❌ when no map, 🗺️ when has map
-        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | ${mapIcon}`;
+        
+        // Status icons with better formatting
+        const mapIcon = stats.hasMap ? '🗺️' : '❌';
+        const karmaIcon = stats.status === 'good karma' ? ' 😇' : '';  // Added space before emoji
+        
+        // Build stats display with emojis
+        const statLine = [
+            `${playerGold[playerIndex]} 💰`,
+            `${stats.health} ❤️`,
+            `${stats.strength} 💪`,
+            `${stats.potions} 🧪`,
+            `${stats.magic} ✨`,
+            mapIcon,
+            karmaIcon  // Add karma icon at the end
+        ].filter(Boolean).join(' | ');  // Filter empty strings and join
+        
+        goldDisplay.textContent = statLine;
+        goldDisplay.classList.add('gold-flash');
+        setTimeout(() => goldDisplay.classList.remove('gold-flash'), 500);
     }
 
     // Update player indicator creation first
