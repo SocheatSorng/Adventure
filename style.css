@@ -4,6 +4,8 @@
     flex-direction: column;  /* Change to column to stack elements vertically */
     align-items: center;
     padding: 20px;
+    margin-top: 80px; /* Add space for fixed header */
+    padding-bottom: 100px; /* Add space for fixed event display */
 }
 
 table {
@@ -171,9 +173,15 @@ td img[src^="data:image"] {
 }
 
 .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     padding: 20px;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .header-content {
@@ -416,20 +424,23 @@ td img[src^="data:image"] {
 }
 
 .event-display {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 100%;
-    max-width: 640px;  /* Match table width (8 cells * 80px) */
+    max-width: 640px;
     text-align: center;
     padding: 15px;
-    margin-bottom: 20px;
-    min-height: 60px;
     background: rgba(0, 0, 0, 0.8);
     color: white;
     border-radius: 5px;
     font-size: 18px;
+    z-index: 1000;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    opacity: 1;  /* Always visible */
 }
 
 .choice-buttons {
