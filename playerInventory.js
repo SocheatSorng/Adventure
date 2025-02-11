@@ -14,7 +14,8 @@ class PlayerInventory {
             hasAlly: false,
             alignment: '',
             honor: 0,
-            wisdom: 0
+            wisdom: 0,
+            itemsUsed: new Set() // Add tracking of used items
         }));
     }
 
@@ -34,7 +35,9 @@ class PlayerInventory {
         // Add status icons
         if (stats.hasMap) statDisplay.push('🗺️');
         if (stats.status === 'good karma') statDisplay.push('😇');
-        if (stats.hasAlly) statDisplay.push('🤝');  // Add ally icon
+        if (stats.hasAlly) statDisplay.push('🤝');
+        if (stats.luck > 0) statDisplay.push('🍀');  // Add luck icon if player has luck points
+        if (stats.hasClue) statDisplay.push('📜');  // Add clue emoji when player has a clue
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');
@@ -55,14 +58,48 @@ class PlayerInventory {
     }
 
     modifyStat(playerIndex, stat, amount) {
-        if (stat in this.playerStats[playerIndex]) {
-            if (typeof this.playerStats[playerIndex][stat] === 'number') {
-                this.playerStats[playerIndex][stat] = Math.max(0, this.playerStats[playerIndex][stat] + amount);
-            } else if (typeof this.playerStats[playerIndex][stat] === 'boolean') {
-                this.playerStats[playerIndex][stat] = Boolean(amount);
+        const stats = this.playerStats[playerIndex];
+        
+        // Check if item is already used
+        if (stat === 'luck' && stats.itemsUsed.has('luckPotion')) {
+            return false;
+        }
+        if (stat === 'hasAlly' && stats.itemsUsed.has('ally')) {
+            return false;
+        }
+        if (stat === 'hasMap' && stats.itemsUsed.has('map')) {
+            return false;
+        }
+        
+        // Mark item as used based on stat
+        if (stat === 'luck') stats.itemsUsed.add('luckPotion');
+        if (stat === 'hasAlly') stats.itemsUsed.add('ally');
+        if (stat === 'hasMap') stats.itemsUsed.add('map');
+        
+        // ...existing modification logic...
+        if (stat in stats) {
+            if (typeof stats[stat] === 'number') {
+                stats[stat] = Math.max(0, stats[stat] + amount);
+            } else if (typeof stats[stat] === 'boolean') {
+                stats[stat] = Boolean(amount);
             } else {
-                this.playerStats[playerIndex][stat] = amount;
+                stats[stat] = amount;
             }
+        }
+        return true;
+    }
+
+    // Add method to check if item is already used
+    hasUsedItem(playerIndex, itemName) {
+        return this.playerStats[playerIndex].itemsUsed.has(itemName);
+    }
+
+    // Add method to mark item as used
+    markItemAsUsed(playerIndex, itemName) {
+        this.playerStats[playerIndex].itemsUsed.add(itemName);
+        // When marking map as used, remove it from status
+        if (itemName === 'map') {
+            this.playerStats[playerIndex].hasMap = false;
         }
     }
 }
