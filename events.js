@@ -254,101 +254,133 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 18: // Merchant's armor
-                if (inventory.getGold(playerIndex) >= 300 && confirm('Buy powerful armor for 300 💰? (+2 Health)')) {
-                    inventory.modifyGold(playerIndex, -300);
-                    stats.health += 2;
-                    message = 'You bought powerful armor! Health +2 🛡️';
-                } else {
-                    message = 'You cannot afford the armor or declined 🛡️';
-                }
-                break;
+                GF.createChoiceUI(
+                    `A merchant offers powerful armor!\nCost: 300 💰\nYour Gold: ${inventory.getGold(playerIndex)}\nEffect: +2 Health\n\nWhat would you like to do?`,
+                    [
+                        'Buy Armor (300 💰)',
+                        'Decline Offer'
+                    ],
+                    (choice) => {
+                        if (choice === '1' && inventory.getGold(playerIndex) >= 300) {
+                            inventory.modifyGold(playerIndex, -300);
+                            stats.health += 2;
+                            message = 'You bought powerful armor! +2 💪';
+                        } else if (choice === '1') {
+                            message = 'Not enough gold to buy the armor! 💰❌';
+                        } else {
+                            message = 'You declined the merchant\'s offer 🛡️';
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                        updateGoldDisplay(playerIndex);
+                    }
+                );
+                return; // Exit early due to async nature
 
             case 19: // Snake encounter
                 const requiredStrength = 3;
-                const playerChoice = confirm(
-                    `A huge snake blocks your path! 🐍\n` +
-                    `Your Strength: ${stats.strength}\n` +
-                    `Required Strength to win: ${requiredStrength}\n\n` +
-                    `Fight the snake? (OK to fight, Cancel to flee)\n` +
-                    `Warning: You'll lose 2 health if you lose the fight!`
-                );
+                let canFight = stats.strength >= requiredStrength;
+                let hasPotion = stats.potions > 0;
+                let choices = [];
                 
-                if (playerChoice) {
-                    if (stats.strength >= requiredStrength) {
-                        stats.strength++;
-                        message = 'You defeated the snake! Strength +1 🐍';
-                    } else {
-                        // First reduce health
-                        stats.health = Math.max(0, stats.health - 2);
-                        // Then check if player should return to start
-                        if (stats.health <= 0) {
-                            GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
-                            message = 'The snake defeated you! Back to start 🐍';
-                        } else {
-                            message = 'The snake was too strong! Lost 2 health 🐍';
-                        }
-                    }
-                } else {
-                    // First reduce health
-                    stats.health = Math.max(0, stats.health - 1);
-                    // Then check if player should return to start
-                    if (stats.health <= 0) {
-                        GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
-                        message = 'The snake\'s bite was fatal! Back to start 🐍';
-                    } else {
-                        message = 'You fled but got bit! Lost 1 health 🐍';
-                    }
+                if (canFight) choices.push('Fight the snake');
+                if (hasPotion) choices.push('Use potion to survive');
+
+                if (choices.length === 0) {
+                    // No options available - instant defeat
+                    GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
+                    message = 'The snake was too powerful! Back to start 🐍';
+                    showEventMessage(message);
+                    updatePlayerStats(playerIndex);
+                    return;
                 }
-                break;
+
+                GF.createChoiceUI(
+                    `A huge 🐍 blocks your path! \n` +
+                    `Required: ${requiredStrength} 💪\n` +
+                    `Potions: ${stats.potions} 🧪\n\n` +
+                    `What will you do?`,
+                    choices,
+                    (choice) => {
+                        if (choice === '1' && canFight) {
+                            stats.strength = Math.max(0, stats.strength - 3);
+                            message = 'You defeated the snake but lost 3 💪 due to exhaustion!';
+                        } else if ((choice === '2' && hasPotion) || (choice === '1' && hasPotion)) {
+                            stats.potions--;
+                            message = 'Used a potion to escape the snake! 🧪';
+
+                            setTimeout(() => {
+                                movePlayer(playerIndex, 1);
+                            }, 1000);
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                    }
+                );
+                return; // Exit early due to async nature
 
             case 20: // Ancient treasure
                 const treasureType = Math.floor(Math.random() * 4);
                 switch(treasureType) {
                     case 0:
                         inventory.modifyGold(playerIndex, 400);
-                        message = 'Found ancient 💰! +400 💰 🏆';
+                        message = 'Found ancient golds! +400 💰';
                         showGoldAnimation(targetCell, 400);
                         break;
                     case 1:
                         stats.potions += 3;
-                        message = 'Found ancient potions! +3 potions 🏆';
+                        message = 'Found ancient potions! +3 🧪';
                         break;
                     case 2:
                         stats.magic += 2;
-                        message = 'Found ancient scrolls! Magic +2 🏆';
+                        message = 'Found ancient scrolls! +2 🔮';
                         break;
                     case 3:
                         stats.strength += 2;
-                        message = 'Found ancient weapons! Strength +2 🏆';
+                        message = 'Found ancient weapons! +2 💪';
                         break;
                 }
                 break;
 
             case 21: // Pit trap
                 if (stats.hasMap) {
-                    message = 'Your map warned you about the pit trap! 🕳️';
+                    message = 'Your map warned you about the pit trap! You avoided it! -1 🗺️';
+                    stats.hasMap = false;
                 } else {
                     stats.turns = Math.max(0, (stats.turns || 0) - 1);
-                    stats.health = Math.max(0, stats.health - 1);
-                    message = localCheckHealth() || 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
+                    message = 'Fell into a pit trap! Lost 1 turn 🕳️';
                 }
                 break;
 
             case 22: // Sorcerer's deal
-                if (inventory.getGold(playerIndex) >= 200 && confirm('The sorcerer offers: Pay 200 💰 for +2 Magic. Accept? ⚡')) {
-                    inventory.modifyGold(playerIndex, -200);
-                    stats.magic += 2;
-                    message = 'The sorcerer granted you power! Magic +2 ⚡';
-                } else {
-                    message = 'You declined the sorcerer\'s offer ⚡';
-                }
-                break;
+                GF.createChoiceUI(
+                    `A mysterious sorcerer appears!\n Trade 200 💰 For 2 🔮 or Decline the offer?`,
+                    [
+                        'Accept offer (200 💰)',
+                        'Decline offer'
+                    ],
+                    (choice) => {
+                        if (choice === '1' && inventory.getGold(playerIndex) >= 200) {
+                            inventory.modifyGold(playerIndex, -200);
+                            stats.magic += 2;
+                            message = 'The sorcerer granted you power! +2 🔮';
+                        } else if (choice === '1') {
+                            message = 'Not enough gold for the sorcerer\'s offer! 💰❌';
+                        } else {
+                            message = 'You declined the sorcerer\'s offer';
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                        updateGoldDisplay(playerIndex);
+                    }
+                );
+                return; // Exit early due to async nature
 
             case 23: // Village help
                 stats.hasAlly = true;
                 stats.strength += 2;
                 inventory.modifyGold(playerIndex, 100);
-                message = 'You saved the village! Gained an ally, Strength +2, 💰 +100 🏡';
+                message = 'You saved the village! + ally (🤝), +2 💪, +100 💰';
                 
                 // Add ally gained animation
                 const allyAnimation = document.createElement('div');
@@ -356,37 +388,37 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 allyAnimation.innerHTML = '🤝';
                 allyAnimation.style.fontSize = '24px';
                 targetCell.appendChild(allyAnimation);
-                setTimeout(() => allyAnimation.remove(), 1000);
+                setTimeout(() => allyAnimation.remove(), 3000);
                 
                 showGoldAnimation(targetCell, 100);
                 break;
 
             case 24: // Magic ring
-                createChoiceUI(
-                    'The ring grants one wish!',
+                GF.createChoiceUI(
+                    'The 💍 grants one wish!\n',
                     [
-                        'Health +3',
-                        'Strength +3',
-                        'Magic +3',
+                        '+3 ❤️',
+                        '+3 💪',
+                        '+3 🔮',
                         '+300 💰'
                     ],
                     (choice) => {
                         switch(choice) {
                             case '1':
                                 stats.health += 3;
-                                message = 'Your wish for health was granted! Health +3 💍';
+                                message = 'Your wish for health was granted! +3 ❤️';
                                 break;
                             case '2':
                                 stats.strength += 3;
-                                message = 'Your wish for strength was granted! Strength +3 💍';
+                                message = 'Your wish for strength was granted! +3 💪';
                                 break;
                             case '3':
                                 stats.magic += 3;
-                                message = 'Your wish for magic was granted! Magic +3 💍';
+                                message = 'Your wish for magic was granted! +3 🔮';
                                 break;
                             case '4':
                                 inventory.modifyGold(playerIndex, 300);
-                                message = 'Your wish for gold was granted! +300 💰 💍';
+                                message = 'Your wish for gold was granted! +300 💰';
                                 showGoldAnimation(targetCell, 300);
                                 break;
                         }
@@ -521,8 +553,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
         }
     }
 
-    // Only check health at the end if we modified health in this event
-    const healthModifyingGrids = [4, 19, 21];
+    // Change the healthModifyingGrids array to remove grid 21 since it no longer affects health
+    const healthModifyingGrids = [4, 19];  // Removed 21 from the array
     if (healthModifyingGrids.includes(gridNumber)) {
         const healthCheck = localCheckHealth();
         if (healthCheck) {
