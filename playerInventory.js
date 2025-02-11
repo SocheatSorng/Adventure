@@ -38,6 +38,7 @@ class PlayerInventory {
         if (stats.hasAlly) statDisplay.push('🤝');
         if (stats.luck > 0) statDisplay.push('🍀');  // Add luck icon if player has luck points
         if (stats.hasClue) statDisplay.push('📜');  // Add clue emoji when player has a clue
+        if (stats.hasHouse) statDisplay.push('🏠'); // Add house emoji when player has a house
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');

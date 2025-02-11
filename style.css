@@ -354,7 +354,28 @@ td img[src^="data:image"] {
     z-index: 100;
 }
 
+.house-animation {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    animation: mapFound 1s ease-out forwards;
+    z-index: 100;
+}
+
 @keyframes mapFound {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -100%) scale(1.5);
+        opacity: 0;
+    }
+}
+
+@keyframes houseFound {
     0% {
         transform: translate(-50%, -50%) scale(1);
         opacity: 1;

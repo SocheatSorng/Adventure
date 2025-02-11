@@ -1,9 +1,9 @@
-(function() {
-    window.handleLateEvents = function(playerIndex, position, targetCell, params) {
+(function () {
+    window.handleLateEvents = function (playerIndex, position, targetCell, params) {
         const stats = params.inventory.getStats(playerIndex);
         let message = '';
         const GF = window.GameFunctions;
-        
+
         // Calculate grid number
         const gridNumber = position + 1;
 
@@ -12,163 +12,258 @@
             return GF.checkHealth(stats, params.playerPositions, playerIndex, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
         }
 
-        switch(gridNumber) {
+        switch (gridNumber) {
             case 33: // City of Gold
                 const cityGold = Math.floor(Math.random() * 300) + 200;
                 params.inventory.modifyGold(playerIndex, cityGold);
-                message = `Welcome to the City of Gold! Found ${cityGold} gold! 🏰💰`;
+                message = `Welcome to the City of Gold! Found ${cityGold} 💰! `;
                 GF.showGoldAnimation(targetCell, cityGold);
                 break;
 
             case 34: // Luck Potion
-                if (params.inventory.getGold(playerIndex) >= 500 && confirm('Buy luck potion for 500 Gold? (Increases success rates) 🧪')) {
-                    params.inventory.modifyGold(playerIndex, -500);
-                    stats.luck = (stats.luck || 0) + 2;
-                    message = 'Bought a luck potion! Luck +2 🍀';
-                } else {
-                    message = 'Declined to buy the luck potion 🧪';
-                }
+                GF.createChoiceUI(
+                    'You found a luck potion! 🧪',
+                    [
+                        'DRINK - Gain 🍀',
+                        'SELL - Get 500 💰',
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // DRINK
+                                params.inventory.modifyStat(playerIndex, 'luck', 1);
+                                message = 'Drank the luck potion! Gained luck 🍀';
+                                break;
+                            case '2': // SELL
+                                params.inventory.modifyGold(playerIndex, 500);
+                                message = 'Sold the luck potion for 500 Gold 💰';
+                                GF.showGoldAnimation(targetCell, 500);
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
+                )
                 break;
 
             case 35: // Pickpocket
-                const dexRoll = params.rollDice();
-                if (stats.luck > 0 && confirm('Use your luck to catch the pickpocket? 🍀')) {
-                    params.inventory.markItemAsUsed(playerIndex, 'luckPotion');
-                    message = 'Your luck helped you catch the pickpocket! 🍀';
-                } else if (dexRoll >= 5) {
-                    message = `Rolled ${dexRoll}! Caught the pickpocket! 🦹‍♂️❌`;
-                } else {
-                    const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
-                    params.inventory.modifyGold(playerIndex, -stolenAmount);
-                    message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
-                }
+                GF.createChoiceUI(
+                    `A pickpocket is trying to steal your 💰!${stats.hasClover ? '\nYou have a Lucky Clover! 🍀' : ''}`,
+                    [
+                        'CATCH - Roll dice to catch',
+                        'USE 🍀 - Prevent theft'
+                    ].filter(Boolean),
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // CATCH
+                                const dexRoll = params.rollDice();
+                                if (dexRoll >= 5) {
+                                    message = `Rolled ${dexRoll}! Caught the pickpocket! 🦹‍♂️❌`;
+                                } else {
+                                    const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
+                                    params.inventory.modifyGold(playerIndex, -stolenAmount);
+                                    message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
+                                    params.inventory.modifyGold(playerIndex, -stolenAmount);
+                                }
+                                break;
+                            case '2': // USE CLOVER
+                                if (stats.hasClover) {
+                                    stats.hasClover = false;
+                                    params.inventory.markItemAsUsed(playerIndex, 'clover');
+                                    message = 'Your Lucky Clover wards off the pickpocket! 🍀';
+                                }
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
+                );
                 break;
 
             case 36: // Noble's job
-                if (stats.hasMap || stats.luck > 0) {
-                    params.inventory.modifyGold(playerIndex, 1000);
-                    message = 'Your reputation helped! Earned 1000 Gold from the noble! 👑';
-                    GF.showGoldAnimation(targetCell, 1000);
+                if (stats.hasAlly) {
+                    params.inventory.modifyGold(playerIndex, 1200);
+                    message = 'Your ally helped complete the job! Earned 1200 💰 from the noble!';
+                    GF.showGoldAnimation(targetCell, 1200);
                 } else {
                     params.inventory.modifyGold(playerIndex, 800);
-                    message = 'Completed a job for a noble! Earned 800 Gold 👑';
+                    message = 'Completed a job for a noble! Earned 800 💰 👑';
                     GF.showGoldAnimation(targetCell, 800);
                 }
                 break;
 
             case 37: // Buy house
-                if (params.inventory.getGold(playerIndex) >= 1000 && confirm('Invest 1000 Gold in a house? (Provides passive benefits) 🏠')) {
-                    params.inventory.modifyGold(playerIndex, -1000);
-                    stats.hasHouse = true;
-                    stats.health++; // Bonus health for having a house
-                    message = 'Invested in a house! Health +1 from rest 🏠❤️';
-                } else {
-                    message = 'Declined to invest in property 🏠';
-                }
+                GF.createChoiceUI(
+                    'You found a house for sale! 🏠',
+                    [
+                        'BUY - 1000 Gold',
+                        'DECLINE - Save your gold'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // BUY
+                                if (params.inventory.getGold(playerIndex) >= 1000) {
+                                    params.inventory.modifyGold(playerIndex, -1000);
+                                    stats.hasHouse = true;
+                                    if (!stats.hasHouse) {
+                                        stats.hasHouse = true;
+                                        message = 'Bought a house! 🏠';
+                                        const houseAnimation = document.createElement('div');
+                                        houseAnimation.className = 'house-animation';
+                                        houseAnimation.innerHTML = '🏠';
+                                        targetCell.appendChild(houseAnimation);
+                                        setTimeout(() => houseAnimation.remove(), 3000);
+                                    }
+                                } else {
+                                    message = 'Not enough gold to buy a house 🏠❌';
+                                }
+                                break;
+                            default: // DECLINE
+                                message = 'Declined to buy the house 🏠';
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
+                );
                 break;
 
             case 38: // Dangerous mission
-                const missionInfo = `Current Stats:\nStrength: ${stats.strength}\nHealth: ${stats.health}\nAllies: ${stats.hasAlly ? 'Yes' : 'No'}\n\n`;
-                if (confirm(missionInfo + 'Accept dangerous mission for 2,000 Gold? ⚔️')) {
-                    if (stats.strength >= 5 || stats.hasAlly) {
-                        params.inventory.modifyGold(playerIndex, 2000);
-                        message = 'Mission successful! Earned 2,000 Gold 🎯';
-                        GF.showGoldAnimation(targetCell, 2000);
-                    } else {
-                        stats.health--;
-                        message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
+                GF.createChoiceUI(
+                    `You are offered a dangerous mission! ⚔️\n` +
+                    `Your Strength: ${stats.strength}\n` +
+                    `Required: 5 💪\n` +
+                    (stats.hasAlly ? 'Your ally can help complete the mission!\n' : ''),
+                    [
+                        'Accept mission',
+                        'Decline mission'
+                    ],
+                    (choice) => {
+                        if (choice === '1') {
+                            if (stats.hasAlly) {
+                                // Complete mission with ally's help
+                                stats.hasAlly = false;
+                                params.inventory.modifyGold(playerIndex, 2000);
+                                message = 'Your ally helped complete the mission but had to part ways! +2000 💰 -1 🤝';
+                                GF.showGoldAnimation(targetCell, 2000);
+                            } else if (stats.strength >= 5) {
+                                // Move forward to Arena Battle
+                                params.playerPositions[playerIndex] = 39; // Index 39 = Grid 40
+                                const arenaCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(39/8) + 1}) td:nth-child(${39%8 + 1})`);
+                                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                                if (token && arenaCell) {
+                                    arenaCell.appendChild(token);
+                                    token.style.top = '50%';
+                                    token.style.left = '50%';
+                                }
+                                message = 'Your strength impressed them! Moving to the Arena Battle! ⚔️';
+                            } else {
+                                // Move back to Pickpocket
+                                params.playerPositions[playerIndex] = 34; // Index 34 = Grid 35
+                                const pickpocketCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(34/8) + 1}) td:nth-child(${34%8 + 1})`);
+                                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                                if (token && pickpocketCell) {
+                                    pickpocketCell.appendChild(token);
+                                    token.style.top = '50%';
+                                    token.style.left = '50%';
+                                }
+                                message = 'Mission too dangerous! Moved back to grid 35 🏃';
+                            }
+                        } else {
+                            message = 'Declined the dangerous mission 🛡️';
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
                     }
-                } else {
-                    message = 'Declined the dangerous mission 🏃';
-                }
-                break;
+                );
+                return; // Exit early due to async nature
 
             case 39: // Guards arrest
-                const guardInfo = `Your Status:\nGold: ${params.inventory.getGold(playerIndex)}\nStrength: ${stats.strength}\n\n`;
-                const guardChoice = prompt(
-                    guardInfo +
-                    'Guards are arresting you! 👮\n' +
-                    '1: Pay 500 Gold to bribe guards\n' +
-                    '2: Fight guards (needs Strength 5)\n' +
-                    '3: Surrender (return to start)\n' +
-                    'Enter 1, 2, or 3:'
-                );
-
-                switch(guardChoice) {
-                    case '1':
-                        if (params.inventory.getGold(playerIndex) >= 500) {
-                            params.inventory.modifyGold(playerIndex, -500);
-                            message = 'Paid the guards 500 Gold to avoid arrest 💰';
-                        } else {
-                            message = 'Not enough gold to bribe! Guards take you to jail 🚓';
-                            // Send to start
-                            const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
-                            const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                            if (token) {
-                                startCell.appendChild(token);
-                                token.style.top = '50%';
-                                token.style.left = '50%';
-                                params.cellOccupancy[params.TOTAL_CELLS - 1] = Math.max(0, params.cellOccupancy[params.TOTAL_CELLS - 1] - 1);
-                                params.cellOccupancy[0]++;
-                            }
-                            params.playerPositions[playerIndex] = 0;
+                GF.createChoiceUI(
+                    'Guards are arresting you! 👮',
+                    [
+                        'PAY - 500 Gold to bribe guards',
+                        'FIGHT - Fight guards (Strength 5)',
+                        'SURRENDER - Return to start'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // PAY
+                                if (params.inventory.getGold(playerIndex) >= 500) {
+                                    params.inventory.modifyGold(playerIndex, -500);
+                                    message = 'Paid the guards 500 Gold to avoid arrest 💰';
+                                } else {
+                                    message = 'Not enough gold to bribe! Guards take you to jail 🚓';
+                                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                                }
+                                break;
+                            case '2': // FIGHT
+                                if (stats.strength >= 5) {
+                                    message = 'Successfully fought off the guards! 💪';
+                                    stats.strength++;
+                                } else {
+                                    const newPosition = Math.max(0, params.playerPositions[playerIndex] - 5);
+                                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                                    message = 'Lost the fight! Moved back 5 spaces 🏃';
+                                }
+                                break;
+                            default: // SURRENDER
+                                GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                                message = 'Surrendered to the guards! Back to start 🚓';
+                                break;
                         }
-                        break;
-                    case '2':
-                        if (stats.strength >= 5) {
-                            message = 'Successfully fought off the guards! 💪';
-                            stats.strength++;
-                        } else {
-                            // Calculate new position
-                            const newPosition = Math.max(0, params.playerPositions[playerIndex] - 5);
-                            // Move token to new position
-                            const targetRow = Math.floor(newPosition / 8);
-                            const targetCol = newPosition % 8;
-                            const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
-                            const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                            if (token && newCell) {
-                                newCell.appendChild(token);
-                                token.style.top = '50%';
-                                token.style.left = '50%';
-                            }
-                            params.playerPositions[playerIndex] = newPosition;
-                            message = 'Lost the fight! Moved back 5 spaces 🏃';
-                        }
-                        break;
-                    default:
-                        const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
-                        const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                        if (token) {
-                            startCell.appendChild(token);
-                            token.style.top = '50%';
-                            token.style.left = '50%';
-                            params.cellOccupancy[params.TOTAL_CELLS - 1] = Math.max(0, params.cellOccupancy[params.TOTAL_CELLS - 1] - 1);
-                            params.cellOccupancy[0]++;
-                        }
-                        params.playerPositions[playerIndex] = 0;
-                        message = 'Surrendered to the guards! Back to start 🚓';
-                        break;
-                }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
+                )
                 break;
 
             case 40: // Arena Battle
-                const battleRoll = params.rollDice();
-                const totalStrength = battleRoll + (stats.strength || 0) + (stats.luck || 0);
-
-                if (totalStrength >= 6) {
-                    params.inventory.modifyGold(playerIndex, 1500);
-                    stats.strength++;
-                    message = `Arena victory! Roll: ${battleRoll}! Won 1,500 Gold and Strength +1 🏆`;
-                    GF.showGoldAnimation(targetCell, 1500);
-                } else {
-                    stats.health--;
-                    const healthMessage = localCheckHealth();
-                    if (healthMessage) {
-                        message = healthMessage;
-                    } else {
-                        message = `Arena defeat! Roll: ${battleRoll}! Lost 1 Health ⚔️`;
+                GF.createChoiceUI(
+                    `Arena Battle Challenge! ⚔️\n`,
+                    [
+                        'FIGHT - Roll dice for glory',
+                        'DECLINE - Return to start',
+                        stats.potions ? 'USE POTION - Auto win' : null
+                    ].filter(Boolean),
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // FIGHT
+                                const battleRoll = params.rollDice();
+                                if (battleRoll >= 6) {
+                                    params.inventory.modifyGold(playerIndex, 2000);
+                                    stats.strength++;
+                                    message = `Arena victory! Rolled ${battleRoll}! Won 2,000 Gold and +1 Strength 🏆`;
+                                    GF.showGoldAnimation(targetCell, 2000);
+                                } else {
+                                    // Send player back to start
+                                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                                    message = `Arena defeat! Rolled ${battleRoll}! Back to start ⚔️`;
+                                }
+                                break;
+                            case '2': // DECLINE
+                                GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                                message = 'Declined the arena battle. Back to start ⚔️';
+                                break;
+                            case '3': // USE POTION
+                                if (stats.potions) {
+                                    stats.potions--;
+                                    params.inventory.modifyGold(playerIndex, 2000);
+                                    stats.strength++;
+                                    message = 'Used potion to win! +2,000 💰 and +1 💪 🧪🏆';
+                                    GF.showGoldAnimation(targetCell, 2000);
+                                }
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
                     }
-                }
+                );
                 break;
 
             case 41: // Secret treasure room
@@ -207,40 +302,40 @@
                     const newPos = Math.min(oldPos + 10, params.TOTAL_CELLS - 1);
                     // Update cell occupancy and move token
                     params.cellOccupancy[oldPos]--;
-                    
+
                     const targetRow = Math.floor(newPos / 8);
                     const targetCol = newPos % 8;
                     const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                    
+
                     if (token && newCell) {
                         newCell.appendChild(token);
                         token.style.top = '50%';
                         token.style.left = '50%';
                         params.cellOccupancy[newPos]++;
                     }
-                    
+
                     params.playerPositions[playerIndex] = newPos;
                     message = 'Wizard teleported you forward 10 steps! ✨';
                 } else {
                     const magicFail = 5; // Always move 5 steps
                     const newPos = Math.min(params.playerPositions[playerIndex] + magicFail, params.TOTAL_CELLS - 1);
-                    
+
                     // Update cell occupancy and move token
                     params.cellOccupancy[position]--;
-                    
+
                     const targetRow = Math.floor(newPos / 8);
                     const targetCol = newPos % 8;
                     const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                    
+
                     if (token && newCell) {
                         newCell.appendChild(token);
                         token.style.top = '50%';
                         token.style.left = '50%';
                         params.cellOccupancy[newPos]++;
                     }
-                    
+
                     params.playerPositions[playerIndex] = newPos;
                     message = 'Teleport partially worked! Moved 5 steps 🌟';
                 }
@@ -281,7 +376,7 @@
                     'Enter 1 or 2:'
                 );
 
-                switch(societyChoice) {
+                switch (societyChoice) {
                     case '1':
                         stats.alignment = 'light';
                         stats.magic = (stats.magic || 0) + 2;
@@ -331,7 +426,7 @@
             case 49: // Dark Warrior
                 const darkWarriorInfo = `Current Stats:\nStrength: ${stats.strength}\nHealth: ${stats.health}\n\n`;
                 const warriorChoice = confirm(
-                    darkWarriorInfo + 
+                    darkWarriorInfo +
                     'Dark Warrior challenges you!\nRequired Strength: 7\nAccept duel? ⚔️'
                 );
 
@@ -355,7 +450,7 @@
                 const ghostRoll = params.rollDice() + (stats.magic || 0);
                 const requiredPower = 5;
                 const currentPower = ghostRoll;
-                
+
                 if (currentPower >= requiredPower) {
                     if (stats.hasClue) {
                         stats.hasSecrets = true;
@@ -394,7 +489,7 @@
                         'CALL - Get help (Move back)'
                     ],
                     (choice) => {
-                        switch(choice) {
+                        switch (choice) {
                             case '1': // EXPLORE
                                 const dungeonRoll = params.rollDice() + (stats.luck || 0);
                                 if (dungeonRoll >= 4) {
@@ -468,7 +563,7 @@
                     'Type your choice:'
                 )?.toUpperCase();
 
-                switch(chaseChoice) {
+                switch (chaseChoice) {
                     case 'CHASE':
                         if (stats.strength >= 4) {
                             stats.hasMap = true;
@@ -542,7 +637,7 @@
                     `Bribe Cost: 500\n\n` +
                     `Fight the dragon? (OK to fight, Cancel to bribe)`
                 );
-                
+
                 if (dragonChoice) {
                     if (stats.hasAlly && confirm('Use your ally to help fight the dragon? 🤝')) {
                         params.inventory.markItemAsUsed(playerIndex, 'ally');
@@ -564,7 +659,7 @@
                 }
                 break;
         }
-        
+
         return message;
     };
 })();
