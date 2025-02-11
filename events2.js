@@ -1,5 +1,29 @@
 // Make sure function is defined in global scope
 (function() {
+    // Add helper function inside the IIFE
+    function checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS) {
+        if (typeof stats.health === 'undefined') {
+            stats.health = 0;
+        }
+        
+        if (stats.health <= 0) {
+            stats.health = 0;
+            // Send player back to start
+            const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
+            const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+            if (token) {
+                startCell.appendChild(token);
+                token.style.top = '50%';
+                token.style.left = '50%';
+                cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
+                cellOccupancy[0]++;
+            }
+            playerPositions[playerIndex] = 0;
+            return 'You lost all health! Back to start.';
+        }
+        return null;
+    }
+
     window.handleLateEvents = function(playerIndex, position, targetCell, {
         inventory,
         playerPositions,
@@ -18,6 +42,11 @@
         
         // Calculate grid number
         const gridNumber = position + 1;
+
+        // Use checkHealth with all required parameters
+        function localCheckHealth() {
+            return checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS);
+        }
         
         switch(gridNumber) {
             case 33: // City of Gold
@@ -83,7 +112,7 @@
                         showGoldAnimation(targetCell, 2000);
                     } else {
                         stats.health--;
-                        message = checkHealth() || 'Mission failed! Lost 1 health ❌';
+                        message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
                     }
                 } else {
                     message = 'Declined the dangerous mission 🏃';
@@ -169,7 +198,7 @@
                     showGoldAnimation(targetCell, 1500);
                 } else {
                     stats.health--;
-                    const healthMessage = checkHealth();
+                    const healthMessage = localCheckHealth();
                     if (healthMessage) {
                         message = healthMessage;
                     } else {
@@ -273,7 +302,7 @@
                         showGoldAnimation(targetCell, 2500);
                     } else {
                         stats.health--;
-                        message = checkHealth() || 'Mission failed! Lost 1 health ❌';
+                        message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
                     }
                 } else {
                     message = 'Declined the Queen\'s mission 🏃';
@@ -283,21 +312,25 @@
             case 47: // Secret Society
                 const societyChoice = prompt(
                     'Join Secret Society?\n' +
-                    'LIGHT: +2 Magic\n' +
-                    'DARK: +2 Strength\n' +
-                    'Type LIGHT or DARK:'
-                )?.toUpperCase();
+                    '1: Light Society (+2 Magic)\n' +
+                    '2: Dark Society (+2 Strength)\n' +
+                    'Enter 1 or 2:'
+                );
 
-                if (societyChoice === 'LIGHT') {
-                    stats.alignment = 'light';
-                    stats.magic = (stats.magic || 0) + 2;
-                    message = 'Joined the Light Society! Magic +2 ✨';
-                } else if (societyChoice === 'DARK') {
-                    stats.alignment = 'dark';
-                    stats.strength += 2;
-                    message = 'Joined the Dark Society! Strength +2 ⚔️';
-                } else {
-                    message = 'Declined to join any society 🚶';
+                switch(societyChoice) {
+                    case '1':
+                        stats.alignment = 'light';
+                        stats.magic = (stats.magic || 0) + 2;
+                        message = 'Joined the Light Society! Magic +2 ✨';
+                        break;
+                    case '2':
+                        stats.alignment = 'dark';
+                        stats.strength += 2;
+                        stats.magic = Math.max(0, (stats.magic || 0) - 1); // Reduce magic when choosing strength
+                        message = 'Joined the Dark Society! Strength +2, Magic -1 ⚔️';
+                        break;
+                    default:
+                        message = 'Declined to join any society 🚶';
                 }
                 break;
 
@@ -356,7 +389,10 @@
 
             case 50: // Haunted Castle
                 const ghostRoll = rollDice() + (stats.magic || 0);
-                if (ghostRoll >= 5) {
+                const requiredPower = 5;
+                const currentPower = ghostRoll;
+                
+                if (currentPower >= requiredPower) {
                     if (stats.hasClue) {
                         stats.hasSecrets = true;
                         message = 'The ghosts reveal ancient secrets about the Golden Crown! 👻📜';
@@ -366,12 +402,22 @@
                         targetCell.appendChild(secretAnimation);
                         setTimeout(() => secretAnimation.remove(), 1000);
                     } else {
-                        message = 'Survived the haunted castle unscathed 👻';
+                        message = `Survived the haunted castle! (Roll: ${ghostRoll}, Magic: ${stats.magic || 0}, Total: ${currentPower}/${requiredPower}) 👻`;
                     }
                 } else {
                     stats.health--;
                     stats.cursed = true;
-                    message = checkHealth() || 'The ghosts cursed you! Lost 1 health 👻💀';
+                    const lostItems = [];
+                    if (stats.potions > 0) {
+                        lostItems.push(`${stats.potions} potions`);
+                        stats.potions = 0;
+                    }
+                    if (stats.magic > 0) {
+                        lostItems.push('1 magic');
+                        stats.magic = Math.max(0, stats.magic - 1);
+                    }
+                    const lostMessage = lostItems.length > 0 ? ` Lost ${lostItems.join(' and ')}!` : '';
+                    message = localCheckHealth() || `The ghosts cursed you! Roll: ${ghostRoll}, Magic: ${stats.magic || 0}, Total: ${currentPower}/${requiredPower}. Lost 1 health and became cursed!${lostMessage} 👻💀`;
                 }
                 break;
 
@@ -393,7 +439,7 @@
                             showGoldAnimation(targetCell, 800);
                         } else {
                             stats.health--;
-                            message = checkHealth() || 'Encountered enemies! Lost 1 health ⚔️';
+                            message = localCheckHealth() || 'Encountered enemies! Lost 1 health ⚔️';
                         }
                         break;
                     case 'HIDE':
@@ -536,7 +582,7 @@
                     showGoldAnimation(targetCell, 1000);
                 } else {
                     stats.health--;
-                    message = checkHealth() || 'Wrong answer! Lost 1 health ❌';
+                    message = localCheckHealth() || 'Wrong answer! Lost 1 health ❌';
                 }
                 break;
 
@@ -567,7 +613,7 @@
                             message = 'Successfully snuck past! Moving forward 🦶';
                         } else {
                             stats.health--;
-                            message = checkHealth() || 'Failed to sneak! Lost 1 health 👀';
+                            message = localCheckHealth() || 'Failed to sneak! Lost 1 health 👀';
                         }
                         break;
                     case 'BARGAIN':
