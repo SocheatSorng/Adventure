@@ -1,90 +1,28 @@
-// Make sure function is defined in global scope
 (function() {
-    // Add helper function inside the IIFE
-    function checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS) {
-        if (typeof stats.health === 'undefined') {
-            stats.health = 0;
-        }
-        
-        if (stats.health <= 0) {
-            stats.health = 0;
-            // Send player back to start
-            const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
-            const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-            if (token) {
-                startCell.appendChild(token);
-                token.style.top = '50%';
-                token.style.left = '50%';
-                cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
-                cellOccupancy[0]++;
-            }
-            playerPositions[playerIndex] = 0;
-            return 'You lost all health! Back to start.';
-        }
-        return null;
-    }
-
-    function createChoiceUI(message, choices, callback, targetCell) {
-        const eventDisplay = document.getElementById('eventDisplay');
-        const originalMessage = eventDisplay.textContent;
-
-        // Create choice buttons
-        const buttonsHtml = choices.map((choice, index) => 
-            `<button onclick="window.handleChoice(${index})" class="choice-button">${choice}</button>`
-        ).join('');
-
-        // Update display with message and choices
-        eventDisplay.innerHTML = `
-            <div>${message}</div>
-            <div class="choice-buttons">${buttonsHtml}</div>
-        `;
-
-        // Set up global handler
-        window.handleChoice = (choiceIndex) => {
-            // Reset display
-            eventDisplay.innerHTML = originalMessage;
-            // Remove global handler
-            delete window.handleChoice;
-            // Call callback with choice
-            callback((choiceIndex + 1).toString());
-        };
-    }
-
-    window.handleLateEvents = function(playerIndex, position, targetCell, {
-        inventory,
-        playerPositions,
-        showEventMessage,
-        updatePlayerStats,
-        updateGoldDisplay,
-        showGoldAnimation,
-        rollDice,
-        cellOccupancy,
-        TOTAL_CELLS,
-        movePlayer,
-        currentPlayer
-    }) {
-        const stats = inventory.getStats(playerIndex);
+    window.handleLateEvents = function(playerIndex, position, targetCell, params) {
+        const stats = params.inventory.getStats(playerIndex);
         let message = '';
+        const GF = window.GameFunctions;
         
         // Calculate grid number
         const gridNumber = position + 1;
 
-        // Use checkHealth with all required parameters
+        // Helper that uses GameFunctions.checkHealth
         function localCheckHealth() {
-            return checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS);
+            return GF.checkHealth(stats, params.playerPositions, playerIndex, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
         }
-        
+
         switch(gridNumber) {
             case 33: // City of Gold
                 const cityGold = Math.floor(Math.random() * 300) + 200;
-                inventory.modifyGold(playerIndex, cityGold);
+                params.inventory.modifyGold(playerIndex, cityGold);
                 message = `Welcome to the City of Gold! Found ${cityGold} gold! 🏰💰`;
-                showGoldAnimation(targetCell, cityGold);
+                GF.showGoldAnimation(targetCell, cityGold);
                 break;
 
             case 34: // Luck Potion
-                if (inventory.getGold(playerIndex) >= 500 && confirm('Buy luck potion for 500 Gold? (Increases success rates) 🧪')) {
-                    inventory.modifyGold(playerIndex, -500);
+                if (params.inventory.getGold(playerIndex) >= 500 && confirm('Buy luck potion for 500 Gold? (Increases success rates) 🧪')) {
+                    params.inventory.modifyGold(playerIndex, -500);
                     stats.luck = (stats.luck || 0) + 2;
                     message = 'Bought a luck potion! Luck +2 🍀';
                 } else {
@@ -93,34 +31,34 @@
                 break;
 
             case 35: // Pickpocket
-                const dexRoll = rollDice();
+                const dexRoll = params.rollDice();
                 if (stats.luck > 0 && confirm('Use your luck to catch the pickpocket? 🍀')) {
-                    inventory.markItemAsUsed(playerIndex, 'luckPotion');
+                    params.inventory.markItemAsUsed(playerIndex, 'luckPotion');
                     message = 'Your luck helped you catch the pickpocket! 🍀';
                 } else if (dexRoll >= 5) {
                     message = `Rolled ${dexRoll}! Caught the pickpocket! 🦹‍♂️❌`;
                 } else {
-                    const stolenAmount = Math.min(300, inventory.getGold(playerIndex));
-                    inventory.modifyGold(playerIndex, -stolenAmount);
+                    const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
+                    params.inventory.modifyGold(playerIndex, -stolenAmount);
                     message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
                 }
                 break;
 
             case 36: // Noble's job
                 if (stats.hasMap || stats.luck > 0) {
-                    inventory.modifyGold(playerIndex, 1000);
+                    params.inventory.modifyGold(playerIndex, 1000);
                     message = 'Your reputation helped! Earned 1000 Gold from the noble! 👑';
-                    showGoldAnimation(targetCell, 1000);
+                    GF.showGoldAnimation(targetCell, 1000);
                 } else {
-                    inventory.modifyGold(playerIndex, 800);
+                    params.inventory.modifyGold(playerIndex, 800);
                     message = 'Completed a job for a noble! Earned 800 Gold 👑';
-                    showGoldAnimation(targetCell, 800);
+                    GF.showGoldAnimation(targetCell, 800);
                 }
                 break;
 
             case 37: // Buy house
-                if (inventory.getGold(playerIndex) >= 1000 && confirm('Invest 1000 Gold in a house? (Provides passive benefits) 🏠')) {
-                    inventory.modifyGold(playerIndex, -1000);
+                if (params.inventory.getGold(playerIndex) >= 1000 && confirm('Invest 1000 Gold in a house? (Provides passive benefits) 🏠')) {
+                    params.inventory.modifyGold(playerIndex, -1000);
                     stats.hasHouse = true;
                     stats.health++; // Bonus health for having a house
                     message = 'Invested in a house! Health +1 from rest 🏠❤️';
@@ -133,9 +71,9 @@
                 const missionInfo = `Current Stats:\nStrength: ${stats.strength}\nHealth: ${stats.health}\nAllies: ${stats.hasAlly ? 'Yes' : 'No'}\n\n`;
                 if (confirm(missionInfo + 'Accept dangerous mission for 2,000 Gold? ⚔️')) {
                     if (stats.strength >= 5 || stats.hasAlly) {
-                        inventory.modifyGold(playerIndex, 2000);
+                        params.inventory.modifyGold(playerIndex, 2000);
                         message = 'Mission successful! Earned 2,000 Gold 🎯';
-                        showGoldAnimation(targetCell, 2000);
+                        GF.showGoldAnimation(targetCell, 2000);
                     } else {
                         stats.health--;
                         message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
@@ -146,7 +84,7 @@
                 break;
 
             case 39: // Guards arrest
-                const guardInfo = `Your Status:\nGold: ${inventory.getGold(playerIndex)}\nStrength: ${stats.strength}\n\n`;
+                const guardInfo = `Your Status:\nGold: ${params.inventory.getGold(playerIndex)}\nStrength: ${stats.strength}\n\n`;
                 const guardChoice = prompt(
                     guardInfo +
                     'Guards are arresting you! 👮\n' +
@@ -158,8 +96,8 @@
 
                 switch(guardChoice) {
                     case '1':
-                        if (inventory.getGold(playerIndex) >= 500) {
-                            inventory.modifyGold(playerIndex, -500);
+                        if (params.inventory.getGold(playerIndex) >= 500) {
+                            params.inventory.modifyGold(playerIndex, -500);
                             message = 'Paid the guards 500 Gold to avoid arrest 💰';
                         } else {
                             message = 'Not enough gold to bribe! Guards take you to jail 🚓';
@@ -170,10 +108,10 @@
                                 startCell.appendChild(token);
                                 token.style.top = '50%';
                                 token.style.left = '50%';
-                                cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
-                                cellOccupancy[0]++;
+                                params.cellOccupancy[params.TOTAL_CELLS - 1] = Math.max(0, params.cellOccupancy[params.TOTAL_CELLS - 1] - 1);
+                                params.cellOccupancy[0]++;
                             }
-                            playerPositions[playerIndex] = 0;
+                            params.playerPositions[playerIndex] = 0;
                         }
                         break;
                     case '2':
@@ -182,7 +120,7 @@
                             stats.strength++;
                         } else {
                             // Calculate new position
-                            const newPosition = Math.max(0, playerPositions[playerIndex] - 5);
+                            const newPosition = Math.max(0, params.playerPositions[playerIndex] - 5);
                             // Move token to new position
                             const targetRow = Math.floor(newPosition / 8);
                             const targetCol = newPosition % 8;
@@ -193,7 +131,7 @@
                                 token.style.top = '50%';
                                 token.style.left = '50%';
                             }
-                            playerPositions[playerIndex] = newPosition;
+                            params.playerPositions[playerIndex] = newPosition;
                             message = 'Lost the fight! Moved back 5 spaces 🏃';
                         }
                         break;
@@ -204,24 +142,24 @@
                             startCell.appendChild(token);
                             token.style.top = '50%';
                             token.style.left = '50%';
-                            cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
-                            cellOccupancy[0]++;
+                            params.cellOccupancy[params.TOTAL_CELLS - 1] = Math.max(0, params.cellOccupancy[params.TOTAL_CELLS - 1] - 1);
+                            params.cellOccupancy[0]++;
                         }
-                        playerPositions[playerIndex] = 0;
+                        params.playerPositions[playerIndex] = 0;
                         message = 'Surrendered to the guards! Back to start 🚓';
                         break;
                 }
                 break;
 
             case 40: // Arena Battle
-                const battleRoll = rollDice();
+                const battleRoll = params.rollDice();
                 const totalStrength = battleRoll + (stats.strength || 0) + (stats.luck || 0);
 
                 if (totalStrength >= 6) {
-                    inventory.modifyGold(playerIndex, 1500);
+                    params.inventory.modifyGold(playerIndex, 1500);
                     stats.strength++;
                     message = `Arena victory! Roll: ${battleRoll}! Won 1,500 Gold and Strength +1 🏆`;
-                    showGoldAnimation(targetCell, 1500);
+                    GF.showGoldAnimation(targetCell, 1500);
                 } else {
                     stats.health--;
                     const healthMessage = localCheckHealth();
@@ -235,9 +173,9 @@
 
             case 41: // Secret treasure room
                 const treasureBonus = stats.hasClue ? 500 : 0;
-                inventory.modifyGold(playerIndex, 1000 + treasureBonus);
+                params.inventory.modifyGold(playerIndex, 1000 + treasureBonus);
                 message = `Found a secret treasure room! +${1000 + treasureBonus} Gold 💎`;
-                showGoldAnimation(targetCell, 1000 + treasureBonus);
+                GF.showGoldAnimation(targetCell, 1000 + treasureBonus);
                 break;
 
             case 42: // Clue to final goal
@@ -251,12 +189,12 @@
                 break;
 
             case 43: // Crime Lord's deal
-                const dealInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
+                const dealInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
                 if (confirm(dealInfo + 'Accept Crime Lord\'s deal?\n1,000 Gold but lose karma 🦹‍♂️')) {
-                    inventory.modifyGold(playerIndex, 1000);
+                    params.inventory.modifyGold(playerIndex, 1000);
                     stats.karma = (stats.karma || 0) - 2;
                     message = 'Gained 1,000 Gold but your reputation suffers 💰😈';
-                    showGoldAnimation(targetCell, 1000);
+                    GF.showGoldAnimation(targetCell, 1000);
                 } else {
                     stats.karma = (stats.karma || 0) + 1;
                     message = 'Refused the Crime Lord. Gained good karma 😇';
@@ -265,10 +203,10 @@
 
             case 44: // Wizard's teleport
                 if (stats.magic > 0) {
-                    const oldPos = playerPositions[playerIndex];
-                    const newPos = Math.min(oldPos + 10, TOTAL_CELLS - 1);
+                    const oldPos = params.playerPositions[playerIndex];
+                    const newPos = Math.min(oldPos + 10, params.TOTAL_CELLS - 1);
                     // Update cell occupancy and move token
-                    cellOccupancy[oldPos]--;
+                    params.cellOccupancy[oldPos]--;
                     
                     const targetRow = Math.floor(newPos / 8);
                     const targetCol = newPos % 8;
@@ -279,17 +217,17 @@
                         newCell.appendChild(token);
                         token.style.top = '50%';
                         token.style.left = '50%';
-                        cellOccupancy[newPos]++;
+                        params.cellOccupancy[newPos]++;
                     }
                     
-                    playerPositions[playerIndex] = newPos;
+                    params.playerPositions[playerIndex] = newPos;
                     message = 'Wizard teleported you forward 10 steps! ✨';
                 } else {
                     const magicFail = 5; // Always move 5 steps
-                    const newPos = Math.min(playerPositions[playerIndex] + magicFail, TOTAL_CELLS - 1);
+                    const newPos = Math.min(params.playerPositions[playerIndex] + magicFail, params.TOTAL_CELLS - 1);
                     
                     // Update cell occupancy and move token
-                    cellOccupancy[position]--;
+                    params.cellOccupancy[position]--;
                     
                     const targetRow = Math.floor(newPos / 8);
                     const targetCol = newPos % 8;
@@ -300,10 +238,10 @@
                         newCell.appendChild(token);
                         token.style.top = '50%';
                         token.style.left = '50%';
-                        cellOccupancy[newPos]++;
+                        params.cellOccupancy[newPos]++;
                     }
                     
-                    playerPositions[playerIndex] = newPos;
+                    params.playerPositions[playerIndex] = newPos;
                     message = 'Teleport partially worked! Moved 5 steps 🌟';
                 }
                 break;
@@ -319,13 +257,13 @@
                 break;
 
             case 46: // Queen's Secret Mission
-                const missionStatus = `Current Stats:\nLuck: ${stats.luck || 0}\nHealth: ${stats.health}\nGold: ${inventory.getGold(playerIndex)}\n\n`;
+                const missionStatus = `Current Stats:\nLuck: ${stats.luck || 0}\nHealth: ${stats.health}\nGold: ${params.inventory.getGold(playerIndex)}\n\n`;
                 if (confirm(missionStatus + 'Accept Queen\'s secret mission?\nRisk health for 2,500 Gold 👑')) {
-                    const missionRoll = rollDice() + (stats.luck || 0);
+                    const missionRoll = params.rollDice() + (stats.luck || 0);
                     if (missionRoll >= 4) {
-                        inventory.modifyGold(playerIndex, 2500);
+                        params.inventory.modifyGold(playerIndex, 2500);
                         message = 'Mission successful! Earned 2,500 Gold 🎯';
-                        showGoldAnimation(targetCell, 2500);
+                        GF.showGoldAnimation(targetCell, 2500);
                     } else {
                         stats.health--;
                         message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
@@ -361,7 +299,7 @@
                 break;
 
             case 48: // City in Chaos
-                const chaosInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
+                const chaosInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
                 const chaosChoice = prompt(
                     chaosInfo +
                     'City is in chaos!\n' +
@@ -373,18 +311,18 @@
                 if (chaosChoice === 'HELP') {
                     stats.karma = (stats.karma || 0) + 2;
                     if (stats.hasAlly) {
-                        inventory.modifyGold(playerIndex, 300);
+                        params.inventory.modifyGold(playerIndex, 300);
                         message = 'Helped restore order! Karma +2 and found 300 Gold! 😇';
-                        showGoldAnimation(targetCell, 300);
+                        GF.showGoldAnimation(targetCell, 300);
                     } else {
                         message = 'Helped restore order! Gained good karma 😇';
                     }
                 } else if (chaosChoice === 'LOOT') {
                     const lootAmount = Math.floor(Math.random() * 500) + 500;
-                    inventory.modifyGold(playerIndex, lootAmount);
+                    params.inventory.modifyGold(playerIndex, lootAmount);
                     stats.karma = (stats.karma || 0) - 1;
                     message = `Looted ${lootAmount} Gold but lost karma 💰😈`;
-                    showGoldAnimation(targetCell, lootAmount);
+                    GF.showGoldAnimation(targetCell, lootAmount);
                 } else {
                     message = 'Fled the chaos 🏃';
                 }
@@ -398,14 +336,14 @@
                 );
 
                 if (warriorChoice) {
-                    const duelRoll = rollDice();
+                    const duelRoll = params.rollDice();
                     const totalPower = duelRoll + (stats.strength || 0);
                     if (totalPower >= 7) {
                         stats.honor = (stats.honor || 0) + 1;
                         stats.strength += 1;
                         message = 'Victory! Honor +1, Strength +1 ⚔️👑';
                     } else {
-                        playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 3);
+                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 3);
                         message = 'Lost the duel! Retreated 3 spaces 🏃';
                     }
                 } else {
@@ -414,7 +352,7 @@
                 break;
 
             case 50: // Haunted Castle
-                const ghostRoll = rollDice() + (stats.magic || 0);
+                const ghostRoll = params.rollDice() + (stats.magic || 0);
                 const requiredPower = 5;
                 const currentPower = ghostRoll;
                 
@@ -448,7 +386,7 @@
                 break;
 
             case 51: // Dungeon Trapdoor
-                createChoiceUI(
+                GF.createChoiceUI(
                     'You fell into a dungeon! 🕳️',
                     [
                         'EXPLORE - Risk health for treasure',
@@ -458,11 +396,11 @@
                     (choice) => {
                         switch(choice) {
                             case '1': // EXPLORE
-                                const dungeonRoll = rollDice() + (stats.luck || 0);
+                                const dungeonRoll = params.rollDice() + (stats.luck || 0);
                                 if (dungeonRoll >= 4) {
-                                    inventory.modifyGold(playerIndex, 800);
+                                    params.inventory.modifyGold(playerIndex, 800);
                                     message = 'Found hidden treasure! +800 Gold 💰';
-                                    showGoldAnimation(targetCell, 800);
+                                    GF.showGoldAnimation(targetCell, 800);
                                 } else {
                                     stats.health--;
                                     message = localCheckHealth() || 'Encountered enemies! Lost 1 health ⚔️';
@@ -477,15 +415,14 @@
                                 }
                                 break;
                             default: // CALL or invalid input
-                                playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 2);
+                                params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 2);
                                 message = 'Guards heard you! Moved back 2 spaces 👮';
                                 break;
                         }
-                        showEventMessage(message);
-                        updatePlayerStats(playerIndex);
-                        updateGoldDisplay(playerIndex);
-                    },
-                    targetCell
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
                 );
                 break;
 
@@ -506,13 +443,13 @@
                 break;
 
             case 53: // Demon's Deal
-                const demonInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
+                const demonInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
                 if (confirm(demonInfo + 'Accept demon\'s deal?\n2,000 Gold for -2 karma 😈')) {
-                    inventory.modifyGold(playerIndex, 2000);
+                    params.inventory.modifyGold(playerIndex, 2000);
                     stats.karma = (stats.karma || 0) - 2;
                     stats.soulBound = true;
                     message = 'Accepted demon\'s deal. +2,000 Gold but soul is bound 😈💰';
-                    showGoldAnimation(targetCell, 2000);
+                    GF.showGoldAnimation(targetCell, 2000);
                 } else if (stats.alignment === 'light') {
                     message = 'Rejected demon. Light alignment rewarded with +1 strength ✨💪';
                     stats.strength++;
@@ -538,13 +475,13 @@
                             stats.strength++;
                             message = 'Caught the thief! Recovered map and gained strength 💪';
                         } else {
-                            playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 4);
+                            params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 4);
                             message = 'Failed to catch thief! Moved back 4 spaces 🏃';
                         }
                         break;
                     case 'BRIBE':
-                        if (inventory.getGold(playerIndex) >= 300) {
-                            inventory.modifyGold(playerIndex, -300);
+                        if (params.inventory.getGold(playerIndex) >= 300) {
+                            params.inventory.modifyGold(playerIndex, -300);
                             stats.hasMap = true;
                             stats.hasAlly = true;
                             message = 'Paid thief 300 Gold. They become your ally! 🤝';
@@ -566,10 +503,10 @@
                 if (portalChoice) {
                     if (stats.hasClue || stats.hasSecrets) {
                         const advance = Math.floor(Math.random() * 6) + 3;
-                        setTimeout(() => movePlayer(playerIndex, advance), 500);
+                        setTimeout(() => params.movePlayer(playerIndex, advance), 500);
                         message = `Your knowledge guided you! Moving forward ${advance} spaces ✨`;
                     } else {
-                        playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 5);
+                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 5);
                         message = 'Portal sent you backward! Moved back 5 spaces 🌀';
                     }
                 } else {
@@ -581,13 +518,13 @@
                 const guardianInfo = `Your Power:\nStrength: ${stats.strength}\nMagic: ${stats.magic || 0}\nMystic Staff: ${stats.hasMysticStaff ? 'Yes' : 'No'}\n\n`;
 
                 if (!stats.foughtGuardian) {
-                    const guardianBattle = stats.strength + (stats.magic || 0) + rollDice();
+                    const guardianBattle = stats.strength + (stats.magic || 0) + params.rollDice();
                     if (guardianBattle >= 10 || stats.hasMysticStaff) {
                         stats.foughtGuardian = true;
                         stats.honor = (stats.honor || 0) + 2;
                         message = 'Defeated the Final Guardian! Honor +2 👑⚔️';
                     } else {
-                        playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 6);
+                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 6);
                         message = 'Guardian overwhelmed you! Moved back 6 spaces 🛡️';
                     }
                 } else {
@@ -595,13 +532,12 @@
                 }
                 break;
 
-
             case 29: // Dragon encounter
                 const dragonChoice = confirm(
                     `A fierce dragon blocks your path! 🐲\n` +
                     `Your Strength: ${stats.strength}\n` +
                     `Required Strength: 6\n` +
-                    `Current Gold: ${inventory.getGold(playerIndex)}\n` +
+                    `Current Gold: ${params.inventory.getGold(playerIndex)}\n` +
                     (stats.hasAlly ? 'You have an ally! They can help you fight!\n' : '') +
                     `Bribe Cost: 500\n\n` +
                     `Fight the dragon? (OK to fight, Cancel to bribe)`
@@ -609,21 +545,21 @@
                 
                 if (dragonChoice) {
                     if (stats.hasAlly && confirm('Use your ally to help fight the dragon? 🤝')) {
-                        inventory.markItemAsUsed(playerIndex, 'ally');
+                        params.inventory.markItemAsUsed(playerIndex, 'ally');
                         message = 'You and your ally defeated the dragon! 🐲⚔️';
                         stats.strength += 2;
                     } else if (stats.strength >= 6) {
                         message = 'You defeated the dragon with your strength! 🐲⚔️';
                         stats.strength += 2;
                     } else {
-                        playerPositions[playerIndex] = 0;
+                        params.playerPositions[playerIndex] = 0;
                         message = 'The dragon was too powerful! Back to start 🐲';
                     }
-                } else if (inventory.getGold(playerIndex) >= 500) {
-                    inventory.modifyGold(playerIndex, -500);
+                } else if (params.inventory.getGold(playerIndex) >= 500) {
+                    params.inventory.modifyGold(playerIndex, -500);
                     message = 'Bribed the dragon with 500 Gold to pass safely 🐲💰';
                 } else {
-                    playerPositions[playerIndex] = 0;
+                    params.playerPositions[playerIndex] = 0;
                     message = 'Not enough gold to bribe! Back to start 🐲';
                 }
                 break;

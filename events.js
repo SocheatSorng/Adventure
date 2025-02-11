@@ -1,5 +1,5 @@
 function handleColumnEvent(playerIndex, position, targetCell, {
-    inventory,  // Replace playerStats and playerGold with inventory
+    inventory,
     playerPositions,
     showEventMessage,
     updatePlayerStats,
@@ -11,55 +11,25 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     movePlayer,
     currentPlayer
 }) {
-    const stats = inventory.getStats(playerIndex);  // Use inventory methods
+    const stats = inventory.getStats(playerIndex);
     let message = '';
+    const GF = window.GameFunctions;
     
-    // Helper function to send player back to start
-    function sendPlayerToStart() {
-        playerPositions[playerIndex] = 0;
-        const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
-        const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-        if (token) {
-            startCell.appendChild(token);
-            token.style.top = '50%';
-            token.style.left = '50%';
-            cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
-            cellOccupancy[0]++;
-        }
-    }
-
-    // Helper function to check health and return to start if needed
-    function checkHealth() {
-        // Initialize health if undefined
-        if (typeof stats.health === 'undefined') {
-            stats.health = 0;
-        }
-        
-        // Only send to start if health is explicitly 0
-        if (stats.health <= 0) {
-            stats.health = 0; // Ensure health doesn't go negative
-            sendPlayerToStart();
-            return 'You lost all health! Back to start.';
-        }
-        return null;
-    }
-
-    // Add function to handle item usage prompts
-    function askToUseItem(stats, itemName, benefit) {
-        if (!stats[itemName]) return false;
-        return confirm(`You have ${itemName}. Do you want to use it? ${benefit}`);
+    // Helper function that uses the global function but with our parameters
+    function localCheckHealth() {
+        return GF.checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS);
     }
 
     // Calculate grid number directly from position (1-based)
     const gridNumber = position + 1;
-    console.log('Current grid:', gridNumber); // Debug log
+    console.log('Current grid:', gridNumber);
 
     // Initialize health if undefined before any event
     if (typeof stats.health === 'undefined') {
         stats.health = 0;
     }
 
-    // Add this code to handle late events
+    // Handle late events
     if (gridNumber >= 33 && gridNumber <= 64) {
         message = window.handleLateEvents(playerIndex, position, targetCell, {
             inventory,
@@ -105,26 +75,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 }
                 break;
 
-            case 4: // Health loss
-                const handleHealthLoss = () => {
-                    if (stats.health > 0) {
-                        stats.health = Math.max(0, stats.health - 1);
-                        if (stats.health <= 0) {
-                            message = 'Stepped on a poisonous plant! Back to start 🌿';
-                            sendPlayerToStart();
-                        } else {
-                            message = 'Lost 1 health! 💔';
-                        }
-                    } else {
-                        message = 'Stepped on a poisonous plant! Back to start 🌿';
-                        sendPlayerToStart();
-                    }
-                    showEventMessage(message);
-                    updatePlayerStats(playerIndex);
-                };
-
+            case 4: // Health loss 
                 if (stats.potions > 0) {
-                    createChoiceUI(
+                    // First show choice before any health changes
+                    GF.createChoiceUI(
                         `You stepped on a poisonous plant! 🌿\nYou have ${stats.potions} potion(s).\nCurrent Health: ${stats.health}\n\nUse a potion to survive?`,
                         [
                             'Use potion',
@@ -135,14 +89,27 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                 stats.potions--;
                                 message = 'Used a health potion to survive! 🧪';
                             } else {
-                                handleHealthLoss();
+                                stats.health = Math.max(0, stats.health - 1);
+                                message = stats.health <= 0 ? 
+                                    'Stepped on a poisonous plant! Back to start 🌿' : 
+                                    'Lost 1 health! 💔';
+                                if (stats.health <= 0) {
+                                    GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
+                                }
                             }
                             showEventMessage(message);
                             updatePlayerStats(playerIndex);
                         }
                     );
+                    return; // Exit early to prevent additional message updates
                 } else {
-                    handleHealthLoss();
+                    stats.health = Math.max(0, stats.health - 1);
+                    message = stats.health <= 0 ? 
+                        'Stepped on a poisonous plant! Back to start 🌿' : 
+                        'Lost 1 health! 💔';
+                    if (stats.health <= 0) {
+                        GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
+                    }
                 }
                 break;
 
@@ -298,7 +265,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         stats.health = Math.max(0, stats.health - 2);
                         // Then check if player should return to start
                         if (stats.health <= 0) {
-                            sendPlayerToStart();
+                            GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
                             message = 'The snake defeated you! Back to start 🐍';
                         } else {
                             message = 'The snake was too strong! Lost 2 health 🐍';
@@ -309,7 +276,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     stats.health = Math.max(0, stats.health - 1);
                     // Then check if player should return to start
                     if (stats.health <= 0) {
-                        sendPlayerToStart();
+                        GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
                         message = 'The snake\'s bite was fatal! Back to start 🐍';
                     } else {
                         message = 'You fled but got bit! Lost 1 health 🐍';
@@ -346,7 +313,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 } else {
                     stats.turns = Math.max(0, (stats.turns || 0) - 1);
                     stats.health = Math.max(0, stats.health - 1);
-                    message = checkHealth() || 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
+                    message = localCheckHealth() || 'Fell into a pit trap! Lose 1 turn and 1 health 🕳️';
                 }
                 break;
 
@@ -418,7 +385,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     message = 'You crossed the river safely! Strength +1';
                 } else {
                     stats.health = Math.max(0, stats.health - 1);
-                    message = checkHealth() || 'Too weak to cross! Lost 1 health';
+                    message = localCheckHealth() || 'Too weak to cross! Lost 1 health';
                 }
                 break;
 
@@ -496,7 +463,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     stats.health--;
                     message = 'Gained 1,000 Gold but lost 1 Health! 🏛️';
                     showGoldAnimation(targetCell, 1000);
-                    const healthCheck = checkHealth();
+                    const healthCheck = localCheckHealth();
                     if (healthCheck) message = healthCheck;
                 } else {
                     message = 'Wisely avoided the cursed temple 🏛️';
@@ -528,7 +495,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     const danger = Math.random() < 0.5;
                     if (danger) {
                         stats.health--;
-                        message = checkHealth() || 'Surprise attack in the night! Lost 1 health 🌙';
+                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 health 🌙';
                     } else {
                         message = 'Strange noises in the night... but nothing happened 🌙';
                     }
@@ -538,16 +505,16 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     }
 
     // Only check health at the end if we modified health in this event
-    const healthModifyingGrids = [4, 19, 21]; // Add all grids that modify health
+    const healthModifyingGrids = [4, 19, 21];
     if (healthModifyingGrids.includes(gridNumber)) {
-        const healthCheck = checkHealth();
+        const healthCheck = localCheckHealth();
         if (healthCheck) {
             message = healthCheck;
         }
     }
 
     if (message && gridNumber !== 4) {
-        showEventMessage(message);
+        GF.showEventMessage(message);
         updatePlayerStats(playerIndex);
         updateGoldDisplay(playerIndex);
     } else {
