@@ -14,17 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerIndicators = document.getElementById('playerIndicators');
     let currentPlayer = 1;
     
-    // Add gold tracking
-    const playerGold = new Array(Number(playerCount)).fill(0);
-
-    // Add player stats tracking
-    const playerStats = Array(Number(playerCount)).fill().map(() => ({
-        health: 0,
-        strength: 0,
-        potions: 0,
-        hasMap: false,
-        magic: 0  // Add magic stat properly
-    }));
+    // Replace player stats initialization with PlayerInventory
+    const inventory = new PlayerInventory(playerCount);
 
     function rollDice() {
         return Math.floor(Math.random() * 6) + 1;
@@ -32,27 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePlayerStats(playerIndex) {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
-        const goldDisplay = wrapper.querySelector('.gold-display');
-        const stats = playerStats[playerIndex];
-        
-        // Status icons with better formatting
-        const mapIcon = stats.hasMap ? '🗺️' : '❌';
-        const karmaIcon = stats.status === 'good karma' ? ' 😇' : '';  // Added space before emoji
-        
-        // Build stats display with emojis
-        const statLine = [
-            `${playerGold[playerIndex]} 💰`,
-            `${stats.health} ❤️`,
-            `${stats.strength} 💪`,
-            `${stats.potions} 🧪`,
-            `${stats.magic} ✨`,
-            mapIcon,
-            karmaIcon  // Add karma icon at the end
-        ].filter(Boolean).join(' | ');  // Filter empty strings and join
-        
-        goldDisplay.textContent = statLine;
-        goldDisplay.classList.add('gold-flash');
-        setTimeout(() => goldDisplay.classList.remove('gold-flash'), 500);
+        inventory.updateStats(playerIndex, wrapper);
     }
 
     // Update player indicator creation first
@@ -299,12 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateGoldDisplay(playerIndex) {
         const wrapper = document.querySelectorAll('#playerIndicators > div')[playerIndex];
-        const goldDisplay = wrapper.querySelector('.gold-display');
-        const stats = playerStats[playerIndex];
-        const mapIcon = stats.hasMap ? '🗺️' : '❌';
-        goldDisplay.textContent = `${playerGold[playerIndex]} 🪙 | ❤️${stats.health} | 💪${stats.strength} | 🧪${stats.potions} | 🔮${stats.magic} | ${mapIcon}`;
-        goldDisplay.classList.add('gold-flash');
-        setTimeout(() => goldDisplay.classList.remove('gold-flash'), 500);
+        inventory.updateStats(playerIndex, wrapper);
     }
 
     function showGoldAnimation(cell, amount) {
@@ -386,12 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Show event message only for final position
                 if (pos === newPos) {
                     handleColumnEvent(playerIndex, pos, targetCell, {  
-                        playerStats,
-                        playerGold,
+                        inventory,         // Pass the inventory object instead of playerStats/playerGold
                         playerPositions,
                         showEventMessage,
                         updatePlayerStats,
-                        updateGoldDisplay,
+                        updateGoldDisplay: (idx) => updateGoldDisplay(idx),  // Wrap the function
                         showGoldAnimation,
                         rollDice,
                         cellOccupancy,

@@ -1,6 +1,5 @@
 function handleColumnEvent(playerIndex, position, targetCell, {
-    playerStats,
-    playerGold,
+    inventory,  // Replace playerStats and playerGold with inventory
     playerPositions,
     showEventMessage,
     updatePlayerStats,
@@ -9,10 +8,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     rollDice,
     cellOccupancy,
     TOTAL_CELLS,
-    movePlayer,  // Add movePlayer to the parameters
-    currentPlayer  // Add currentPlayer parameter
+    movePlayer,
+    currentPlayer
 }) {
-    const stats = playerStats[playerIndex];
+    const stats = inventory.getStats(playerIndex);  // Use inventory methods
     let message = '';
     
     // Helper function to send player back to start
@@ -56,7 +55,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
     switch(gridNumber) {
         case 1: // Gold column (first grid)
-            playerGold[playerIndex] += 50;
+            inventory.modifyGold(playerIndex, 50);
             message = 'Found 50 gold!';
             showGoldAnimation(targetCell, 50);
             break;
@@ -75,10 +74,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 3: // Bandit attack
             if (stats.strength < 3) {
-                playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+                inventory.modifyGold(playerIndex, -100);
                 message = 'Lost to bandits! -100 gold';
             } else {
-                playerGold[playerIndex] += 150;
+                inventory.modifyGold(playerIndex, 150);
                 message = 'Defeated bandits! +150 gold';
                 showGoldAnimation(targetCell, 150);
             }
@@ -113,11 +112,11 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             setTimeout(() => {
                 const houseRoll = rollDice();
                 if (playerRoll > houseRoll) {
-                    playerGold[playerIndex] += 200;
+                    inventory.modifyGold(playerIndex, 200);
                     message += `Computer rolled ${houseRoll}. You won 200 gold!`;
                     showGoldAnimation(targetCell, 200);
                 } else {
-                    playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+                    inventory.modifyGold(playerIndex, -100);
                     message += `Computer rolled ${houseRoll}. You lost 100 gold!`;
                 }
                 showEventMessage(message);
@@ -127,7 +126,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             return; // Exit early due to async nature
 
         case 7: // Trap
-            playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 50);
+            inventory.modifyGold(playerIndex, -50);
             message = 'Fell into a trap! Lost 50 gold.';
             break;
 
@@ -178,7 +177,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 13: // Thieves
-            playerGold[playerIndex] = Math.max(0, playerGold[playerIndex] - 100);
+            inventory.modifyGold(playerIndex, -100);
             message = 'Thieves stole your gold! Lost 100 gold';
             break;
 
@@ -197,7 +196,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             const playerAnswer = prompt(`Solve the riddle!\nWhat goes up but never comes down?\nA) Age\nB) Growth\nC) Time\nEnter A, B, or C:`);
             
             if (playerAnswer && playerAnswer.toUpperCase() === answers[correctAnswer]) {
-                playerGold[playerIndex] += 200;
+                inventory.modifyGold(playerIndex, 200);
                 message = 'Correct answer! Won 200 gold!';
                 showGoldAnimation(targetCell, 200);
             } else {
@@ -206,7 +205,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 16: // Rare gem
-            playerGold[playerIndex] += 500;
+            inventory.modifyGold(playerIndex, 500);
             message = 'Found a rare gem! Gained 500 gold!';
             showGoldAnimation(targetCell, 500);
             break;
@@ -221,8 +220,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 18: // Merchant's armor
-            if (playerGold[playerIndex] >= 300 && confirm('Buy powerful armor for 300 gold? (+2 Health)')) {
-                playerGold[playerIndex] -= 300;
+            if (inventory.getGold(playerIndex) >= 300 && confirm('Buy powerful armor for 300 gold? (+2 Health)')) {
+                inventory.modifyGold(playerIndex, -300);
                 stats.health += 2;
                 message = 'You bought powerful armor! Health +2 🛡️';
             } else {
@@ -272,7 +271,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             const treasureType = Math.floor(Math.random() * 4);
             switch(treasureType) {
                 case 0:
-                    playerGold[playerIndex] += 400;
+                    inventory.modifyGold(playerIndex, 400);
                     message = 'Found ancient gold! +400 gold 🏆';
                     showGoldAnimation(targetCell, 400);
                     break;
@@ -302,8 +301,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 22: // Sorcerer's deal
-            if (playerGold[playerIndex] >= 200 && confirm('The sorcerer offers: Pay 200 gold for +2 Magic. Accept? ⚡')) {
-                playerGold[playerIndex] -= 200;
+            if (inventory.getGold(playerIndex) >= 200 && confirm('The sorcerer offers: Pay 200 gold for +2 Magic. Accept? ⚡')) {
+                inventory.modifyGold(playerIndex, -200);
                 stats.magic += 2;
                 message = 'The sorcerer granted you power! Magic +2 ⚡';
             } else {
@@ -314,8 +313,17 @@ function handleColumnEvent(playerIndex, position, targetCell, {
         case 23: // Village help
             stats.hasAlly = true;
             stats.strength += 2;
-            playerGold[playerIndex] += 100;
+            inventory.modifyGold(playerIndex, 100);
             message = 'You saved the village! Gained an ally, Strength +2, Gold +100 🏡';
+            
+            // Add ally gained animation
+            const allyAnimation = document.createElement('div');
+            allyAnimation.className = 'map-animation';
+            allyAnimation.innerHTML = '🤝';
+            allyAnimation.style.fontSize = '24px';
+            targetCell.appendChild(allyAnimation);
+            setTimeout(() => allyAnimation.remove(), 1000);
+            
             showGoldAnimation(targetCell, 100);
             break;
 
@@ -337,7 +345,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     message = 'Your wish for magic was granted! Magic +3 💍';
                     break;
                 case '4':
-                    playerGold[playerIndex] += 300;
+                    inventory.modifyGold(playerIndex, 300);
                     message = 'Your wish for gold was granted! +300 gold 💍';
                     showGoldAnimation(targetCell, 300);
                     break;
@@ -359,7 +367,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 26: // Rescue traveler
             if (stats.strength >= 2) {
-                playerGold[playerIndex] += 400;
+                inventory.modifyGold(playerIndex, 400);
                 message = 'Rescued a trapped traveler! Gained 400 Gold 🦸';
                 showGoldAnimation(targetCell, 400);
             } else {
@@ -379,12 +387,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
         case 28: // Abandoned ship
             if (stats.hasMap) {
                 const shipLoot = Math.floor(Math.random() * 300) + 200; // 200-500 gold
-                playerGold[playerIndex] += shipLoot;
+                inventory.modifyGold(playerIndex, shipLoot);
                 message = `Found ${shipLoot} Gold on the abandoned ship! 🚢`;
                 showGoldAnimation(targetCell, shipLoot);
             } else {
                 const smallLoot = Math.floor(Math.random() * 100) + 50; // 50-150 gold
-                playerGold[playerIndex] += smallLoot;
+                inventory.modifyGold(playerIndex, smallLoot);
                 message = `Found ${smallLoot} Gold on the ship. Map would help find more! ⛵`;
                 showGoldAnimation(targetCell, smallLoot);
             }
@@ -395,7 +403,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 `A fierce dragon blocks your path! 🐲\n` +
                 `Your Strength: ${stats.strength}\n` +
                 `Required Strength: 6\n` +
-                `Current Gold: ${playerGold[playerIndex]}\n` +
+                `Current Gold: ${inventory.getGold(playerIndex)}\n` +
                 `Bribe Cost: 500\n\n` +
                 `Fight the dragon? (OK to fight, Cancel to bribe)`
             );
@@ -411,8 +419,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     message = 'The dragon was too powerful! Back to start 🐲';
                 }
             } else {
-                if (playerGold[playerIndex] >= 500) {
-                    playerGold[playerIndex] -= 500;
+                if (inventory.getGold(playerIndex) >= 500) {
+                    inventory.modifyGold(playerIndex, -500);
                     message = 'Paid 500 Gold to appease the dragon 🐲💰';
                 } else {
                     playerPositions[playerIndex] = 0;
@@ -423,11 +431,11 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 30: // Cursed Temple
             if (stats.magic >= 2) {
-                playerGold[playerIndex] += 1000;
+                inventory.modifyGold(playerIndex, 1000);
                 message = 'Your magic protected you! Found 1,000 Gold! 🏛️✨';
                 showGoldAnimation(targetCell, 1000);
             } else if (confirm('Risk losing 1 Health for 1,000 Gold? 🏛️')) {
-                playerGold[playerIndex] += 1000;
+                inventory.modifyGold(playerIndex, 1000);
                 stats.health--;
                 message = 'Gained 1,000 Gold but lost 1 Health! 🏛️';
                 showGoldAnimation(targetCell, 1000);
@@ -472,14 +480,14 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 33: // City of Gold
             const cityGold = Math.floor(Math.random() * 300) + 200;
-            playerGold[playerIndex] += cityGold;
+            inventory.modifyGold(playerIndex, cityGold);
             message = `Welcome to the City of Gold! Found ${cityGold} gold! 🏰💰`;
             showGoldAnimation(targetCell, cityGold);
             break;
 
         case 34: // Luck Potion
-            if (playerGold[playerIndex] >= 500 && confirm('Buy luck potion for 500 Gold? (Increases success rates) 🧪')) {
-                playerGold[playerIndex] -= 500;
+            if (inventory.getGold(playerIndex) >= 500 && confirm('Buy luck potion for 500 Gold? (Increases success rates) 🧪')) {
+                inventory.modifyGold(playerIndex, -500);
                 stats.luck = (stats.luck || 0) + 2;
                 message = 'Bought a luck potion! Luck +2 🍀';
             } else {
@@ -495,27 +503,27 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     message = 'Your luck helped you catch the pickpocket! 🍀';
                 }
             } else {
-                const stolenAmount = Math.min(300, playerGold[playerIndex]);
-                playerGold[playerIndex] -= stolenAmount;
+                const stolenAmount = Math.min(300, inventory.getGold(playerIndex));
+                inventory.modifyGold(playerIndex, -stolenAmount);
                 message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
             }
             break;
 
         case 36: // Noble's job
             if (stats.hasMap || stats.luck > 0) {
-                playerGold[playerIndex] += 1000;
+                inventory.modifyGold(playerIndex, 1000);
                 message = 'Your reputation helped! Earned 1000 Gold from the noble! 👑';
                 showGoldAnimation(targetCell, 1000);
             } else {
-                playerGold[playerIndex] += 800;
+                inventory.modifyGold(playerIndex, 800);
                 message = 'Completed a job for a noble! Earned 800 Gold 👑';
                 showGoldAnimation(targetCell, 800);
             }
             break;
 
         case 37: // Buy house
-            if (playerGold[playerIndex] >= 1000 && confirm('Invest 1000 Gold in a house? (Provides passive benefits) 🏠')) {
-                playerGold[playerIndex] -= 1000;
+            if (inventory.getGold(playerIndex) >= 1000 && confirm('Invest 1000 Gold in a house? (Provides passive benefits) 🏠')) {
+                inventory.modifyGold(playerIndex, -1000);
                 stats.hasHouse = true;
                 stats.health++; // Bonus health for having a house
                 message = 'Invested in a house! Health +1 from rest 🏠❤️';
@@ -528,7 +536,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             const missionInfo = `Current Stats:\nStrength: ${stats.strength}\nHealth: ${stats.health}\nAllies: ${stats.hasAlly ? 'Yes' : 'No'}\n\n`;
             if (confirm(missionInfo + 'Accept dangerous mission for 2,000 Gold? ⚔️')) {
                 if (stats.strength >= 5 || stats.hasAlly) {
-                    playerGold[playerIndex] += 2000;
+                    inventory.modifyGold(playerIndex, 2000);
                     message = 'Mission successful! Earned 2,000 Gold 🎯';
                     showGoldAnimation(targetCell, 2000);
                 } else {
@@ -541,7 +549,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 39: // Guards arrest
-            const guardInfo = `Your Status:\nGold: ${playerGold[playerIndex]}\nStrength: ${stats.strength}\n\n`;
+            const guardInfo = `Your Status:\nGold: ${inventory.getGold(playerIndex)}\nStrength: ${stats.strength}\n\n`;
             const guardChoice = prompt(
                 guardInfo +
                 'Guards are arresting you! 👮\n' +
@@ -550,8 +558,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 'RUN (move back 5 spaces)'
             );
             
-            if (guardChoice?.toUpperCase() === 'PAY' && playerGold[playerIndex] >= 500) {
-                playerGold[playerIndex] -= 500;
+            if (guardChoice?.toUpperCase() === 'PAY' && inventory.getGold(playerIndex) >= 500) {
+                inventory.modifyGold(playerIndex, -500);
                 message = 'Paid the guards 500 Gold to avoid arrest 💰';
             } else if (guardChoice?.toUpperCase() === 'FIGHT') {
                 if (stats.strength >= 5) {
@@ -572,7 +580,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             const totalStrength = battleRoll + (stats.strength || 0) + (stats.luck || 0);
             
             if (totalStrength >= 6) {
-                playerGold[playerIndex] += 1500;
+                inventory.modifyGold(playerIndex, 1500);
                 stats.strength++;
                 message = `Arena victory! Roll: ${battleRoll}! Won 1,500 Gold and Strength +1 🏆`;
                 showGoldAnimation(targetCell, 1500);
@@ -589,7 +597,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 41: // Secret treasure room
             const treasureBonus = stats.hasClue ? 500 : 0;
-            playerGold[playerIndex] += 1000 + treasureBonus;
+            inventory.modifyGold(playerIndex, 1000 + treasureBonus);
             message = `Found a secret treasure room! +${1000 + treasureBonus} Gold 💎`;
             showGoldAnimation(targetCell, 1000 + treasureBonus);
             break;
@@ -605,9 +613,9 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 43: // Crime Lord's deal
-            const dealInfo = `Current Status:\nGold: ${playerGold[playerIndex]}\nKarma: ${stats.karma || 0}\n\n`;
+            const dealInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
             if (confirm(dealInfo + 'Accept Crime Lord\'s deal?\n1,000 Gold but lose karma 🦹‍♂️')) {
-                playerGold[playerIndex] += 1000;
+                inventory.modifyGold(playerIndex, 1000);
                 stats.karma = (stats.karma || 0) - 2;
                 message = 'Gained 1,000 Gold but your reputation suffers 💰😈';
                 showGoldAnimation(targetCell, 1000);
@@ -642,11 +650,11 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 46: // Queen's Secret Mission
-            const missionStatus = `Current Stats:\nLuck: ${stats.luck || 0}\nHealth: ${stats.health}\nGold: ${playerGold[playerIndex]}\n\n`;
+            const missionStatus = `Current Stats:\nLuck: ${stats.luck || 0}\nHealth: ${stats.health}\nGold: ${inventory.getGold(playerIndex)}\n\n`;
             if (confirm(missionStatus + 'Accept Queen\'s secret mission?\nRisk health for 2,500 Gold 👑')) {
                 const missionRoll = rollDice() + (stats.luck || 0);
                 if (missionRoll >= 4) {
-                    playerGold[playerIndex] += 2500;
+                    inventory.modifyGold(playerIndex, 2500);
                     message = 'Mission successful! Earned 2,500 Gold 🎯';
                     showGoldAnimation(targetCell, 2500);
                 } else {
@@ -680,7 +688,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 48: // City in Chaos
-            const chaosInfo = `Current Status:\nGold: ${playerGold[playerIndex]}\nKarma: ${stats.karma || 0}\n\n`;
+            const chaosInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
             const chaosChoice = prompt(
                 chaosInfo +
                 'City is in chaos!\n' +
@@ -692,7 +700,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             if (chaosChoice === 'HELP') {
                 stats.karma = (stats.karma || 0) + 2;
                 if (stats.hasAlly) {
-                    playerGold[playerIndex] += 300;
+                    inventory.modifyGold(playerIndex, 300);
                     message = 'Helped restore order! Karma +2 and found 300 Gold! 😇';
                     showGoldAnimation(targetCell, 300);
                 } else {
@@ -700,7 +708,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 }
             } else if (chaosChoice === 'LOOT') {
                 const lootAmount = Math.floor(Math.random() * 500) + 500;
-                playerGold[playerIndex] += lootAmount;
+                inventory.modifyGold(playerIndex, lootAmount);
                 stats.karma = (stats.karma || 0) - 1;
                 message = `Looted ${lootAmount} Gold but lost karma 💰😈`;
                 showGoldAnimation(targetCell, lootAmount);
@@ -766,7 +774,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 case 'EXPLORE':
                     const dungeonRoll = rollDice() + (stats.luck || 0);
                     if (dungeonRoll >= 4) {
-                        playerGold[playerIndex] += 800;
+                        inventory.modifyGold(playerIndex, 800);
                         message = 'Found hidden treasure! +800 Gold 💰';
                         showGoldAnimation(targetCell, 800);
                     } else {
@@ -806,9 +814,9 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 53: // Demon's Deal
-            const demonInfo = `Current Status:\nGold: ${playerGold[playerIndex]}\nKarma: ${stats.karma || 0}\n\n`;
+            const demonInfo = `Current Status:\nGold: ${inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
             if (confirm(demonInfo + 'Accept demon\'s deal?\n2,000 Gold for -2 karma 😈')) {
-                playerGold[playerIndex] += 2000;
+                inventory.modifyGold(playerIndex, 2000);
                 stats.karma = (stats.karma || 0) - 2;
                 stats.soulBound = true;
                 message = 'Accepted demon\'s deal. +2,000 Gold but soul is bound 😈💰';
@@ -843,8 +851,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     }
                     break;
                 case 'BRIBE':
-                    if (playerGold[playerIndex] >= 300) {
-                        playerGold[playerIndex] -= 300;
+                    if (inventory.getGold(playerIndex) >= 300) {
+                        inventory.modifyGold(playerIndex, -300);
                         stats.hasMap = true;
                         stats.hasAlly = true;
                         message = 'Paid thief 300 Gold. They become your ally! 🤝';
@@ -908,7 +916,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             );
 
             if (riddleAnswer?.toLowerCase() === 'map') {
-                playerGold[playerIndex] += 1000;
+                inventory.modifyGold(playerIndex, 1000);
                 stats.wisdom = (stats.wisdom || 0) + 1;
                 message = 'Riddle solved! +1,000 Gold and gained wisdom 📚✨';
                 showGoldAnimation(targetCell, 1000);
@@ -949,8 +957,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     }
                     break;
                 case 'BARGAIN':
-                    if (playerGold[playerIndex] >= 1000) {
-                        playerGold[playerIndex] -= 1000;
+                    if (inventory.getGold(playerIndex) >= 1000) {
+                        inventory.modifyGold(playerIndex, -1000);
                         stats.titanAlly = true;
                         message = 'The titan becomes your ally! Paid 1,000 Gold 🤝';
                     } else {
@@ -964,7 +972,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             break;
 
         case 59: // Cursed Crown
-            const crownInfo = `Status:\nAlignment: ${stats.alignment || 'neutral'}\nKarma: ${stats.karma || 0}\nGold: ${playerGold[playerIndex]}\n\n`;
+            const crownInfo = `Status:\nAlignment: ${stats.alignment || 'neutral'}\nKarma: ${stats.karma || 0}\nGold: ${inventory.getGold(playerIndex)}\n\n`;
             
             if (stats.alignment === 'light' && stats.karma > 0) {
                 message = 'Your pure heart lifts the curse! Crown is yours! 👑✨';
@@ -974,9 +982,9 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 crownAnimation.innerHTML = '👑';
                 targetCell.appendChild(crownAnimation);
                 setTimeout(() => crownAnimation.remove(), 1000);
-            } else if (playerGold[playerIndex] >= 5000 && 
+            } else if (inventory.getGold(playerIndex) >= 5000 && 
                       confirm(crownInfo + 'Pay 5,000 Gold to lift the curse? 👑')) {
-                playerGold[playerIndex] -= 5000;
+                inventory.modifyGold(playerIndex, -5000);
                 stats.hasCrown = true;
                 message = 'Paid to lift the curse! Crown is yours! 👑';
             } else {
@@ -1000,12 +1008,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                              (stats.cursed ? 4 : 0);
             
             if (finalPower >= 15) {
-                playerGold[playerIndex] += 5000;
+                inventory.modifyGold(playerIndex, 5000);
                 message = '🎉 VICTORY! You are worthy! +5,000 Gold';
                 showGoldAnimation(targetCell, 5000);
                 setTimeout(() => {
                     alert(`Congratulations Player ${playerIndex + 1}!\n` +
-                          `Total Gold: ${playerGold[playerIndex]}\n` +
+                          `Total Gold: ${inventory.getGold(playerIndex)}\n` +
                           `Final Power: ${finalPower}`);
                 }, 1000);
             } else {
@@ -1050,7 +1058,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             if (stats.legendaryVictor) {
                 stats.cursed = false;
                 stats.isCrowned = true;
-                playerGold[playerIndex] += 10000;
+                inventory.modifyGold(playerIndex, 10000);
                 message = '👑 The curse is broken! Crowned as the new ruler! +10,000 Gold';
                 showGoldAnimation(targetCell, 10000);
                 
@@ -1105,7 +1113,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
         case 64: // Victory Celebration
             const finalStats = {
-                gold: playerGold[playerIndex],
+                gold: inventory.getGold(playerIndex),
                 strength: stats.strength,
                 magic: stats.magic || 0,
                 karma: stats.karma || 0,
