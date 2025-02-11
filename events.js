@@ -430,18 +430,50 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 25: // Cross the river
                 if (stats.strength >= 5) {
-                    stats.strength++;
-                    message = 'You crossed the river safely! Strength +1';
+                    message = 'You crossed the river safely thanks to your strength!';
                 } else {
-                    stats.health = Math.max(0, stats.health - 1);
-                    message = localCheckHealth() || 'Too weak to cross! Lost 1 health';
+                    message = 'Too weak to cross! The current pushes you back 🌊';
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token) {
+                        // Add animation class
+                        token.classList.add('token-moving');
+                        
+                        setTimeout(() => {
+                            const newPosition = Math.max(0, playerPositions[playerIndex] - 2);
+                            playerPositions[playerIndex] = newPosition;
+                            const targetRow = Math.floor(newPosition / 8);
+                            const targetCol = newPosition % 8;
+                            const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
+                            
+                            if (newCell) {
+                                // Animate movement
+                                const currentRect = token.getBoundingClientRect();
+                                const targetRect = newCell.getBoundingClientRect();
+                                const xDiff = targetRect.left - currentRect.left;
+                                const yDiff = targetRect.top - currentRect.top;
+                                
+                                token.style.transition = 'transform 1s ease-in-out';
+                                token.style.transform = `translate(${xDiff}px, ${yDiff}px)`;
+                                
+                                // After animation, move token to new cell
+                                setTimeout(() => {
+                                    token.style.transition = '';
+                                    token.style.transform = '';
+                                    newCell.appendChild(token);
+                                    token.style.top = '50%';
+                                    token.style.left = '50%';
+                                    token.classList.remove('token-moving');
+                                }, 1000);
+                            }
+                        }, 500);
+                    }
                 }
                 break;
 
             case 26: // Rescue traveler
                 if (stats.strength >= 2) {
                     inventory.modifyGold(playerIndex, 400);
-                    message = 'Rescued a trapped traveler! Gained 400 💰 🦸';
+                    message = 'Rescued a trapped traveler! Gained 400 💰';
                     showGoldAnimation(targetCell, 400);
                 } else {
                     message = 'Not strong enough to help the traveler 😢';
@@ -461,90 +493,143 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 if (stats.hasMap) {
                     const shipLoot = Math.floor(Math.random() * 300) + 200; // 200-500 gold
                     inventory.modifyGold(playerIndex, shipLoot);
-                    message = `Found ${shipLoot} Gold on the abandoned ship! 🚢`;
+                    message = `Found ${shipLoot} 💰 on the abandoned ship! 🚢`;
                     showGoldAnimation(targetCell, shipLoot);
                 } else {
                     const smallLoot = Math.floor(Math.random() * 100) + 50; // 50-150 gold
                     inventory.modifyGold(playerIndex, smallLoot);
-                    message = `Found ${smallLoot} Gold on the ship. Map would help find more! ⛵`;
+                    message = `Found ${smallLoot} 💰 on the ship. Map would help find more! ⛵`;
                     showGoldAnimation(targetCell, smallLoot);
                 }
                 break;
 
             case 29: // Dragon encounter
-                const dragonChoice = confirm(
+                GF.createChoiceUI(
                     `A fierce dragon blocks your path! 🐲\n` +
-                    `Your Strength: ${stats.strength}\n` +
-                    `Required Strength: 6\n` +
-                    `Current Gold: ${inventory.getGold(playerIndex)}\n` +
-                    `Bribe Cost: 500\n\n` +
-                    `Fight the dragon? (OK to fight, Cancel to bribe)`
+                    (stats.hasAlly ? 'Your ally offers to distract the dragon!\n' : '') +
+                    `What will you do?`,
+                    [
+                        `Fight the dragon (need 6 💪)`,
+                        `Bribe with 500 💰`,
+                        stats.hasAlly ? 'Let ally help (lose 🤝)' : 'Run away (random)'
+                    ],
+                    (choice) => {
+                        if (choice === '1') {
+                            if (stats.strength >= 6) {
+                                stats.strength += 2;
+                                message = 'You defeated the dragon with your strength! +2 💪';
+                            } else {
+                                playerPositions[playerIndex] = 0;
+                                message = 'The dragon was too powerful! Back to start 🐲';
+                            }
+                        } else if (choice === '2') {
+                            if (inventory.getGold(playerIndex) >= 500) {
+                                inventory.modifyGold(playerIndex, -500);
+                                message = 'Paid 500 💰 to appease the dragon';
+                            } else {
+                                playerPositions[playerIndex] = 0;
+                                message = 'Not enough 💰 to bribe! Back to start 🐲';
+                            }
+                        } else if (stats.hasAlly) {
+                            // Ally sacrifices themselves
+                            stats.hasAlly = false;
+                            message = 'Your ally sacrificed themselves to save you from the dragon! 🤝😢';
+                            movePlayer(playerIndex, 1); // Move forward 1 space safely
+                        } else {
+                            // Random run away outcome (existing code)
+                            const isLucky = Math.random() < 0.5;
+                            const steps = Math.floor(Math.random() * 6) + 1;
+                            if (isLucky) {
+                                setTimeout(() => {
+                                    movePlayer(playerIndex, steps);
+                                }, 1000);
+                                message = `Found an escape route! Moving forward ${steps} steps 🏃`;
+                            } else {
+                                const newPosition = Math.max(0, playerPositions[playerIndex] - steps);
+                                setTimeout(() => {
+                                    const targetRow = Math.floor(newPosition / 8);
+                                    const targetCol = newPosition % 8;
+                                    const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
+                                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                                    if (token && newCell) {
+                                        token.classList.add('token-moving');
+                                        newCell.appendChild(token);
+                                        token.style.top = '50%';
+                                        token.style.left = '50%';
+                                        setTimeout(() => token.classList.remove('token-moving'), 1000);
+                                    }
+                                    playerPositions[playerIndex] = newPosition;
+                                }, 1000);
+                                message = `Dragon chased you back ${steps} steps! 🐲🏃`;
+                            }
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                        updateGoldDisplay(playerIndex);
+                    }
                 );
-                
-                if (dragonChoice) {
-                    if (stats.strength >= 6 || stats.hasAlly) {
-                        message = stats.hasAlly ? 
-                            'You and your ally defeated the dragon! 🐲⚔️' :
-                            'You defeated the dragon with your strength! 🐲⚔️';
-                        stats.strength += 2;
-                    } else {
-                        playerPositions[playerIndex] = 0;
-                        message = 'The dragon was too powerful! Back to start 🐲';
-                    }
-                } else {
-                    if (inventory.getGold(playerIndex) >= 500) {
-                        inventory.modifyGold(playerIndex, -500);
-                        message = 'Paid 500 💰 to appease the dragon 🐲💰';
-                    } else {
-                        playerPositions[playerIndex] = 0;
-                        message = 'Not enough 💰 to bribe! Back to start 🐲';
-                    }
-                }
-                break;
+                return;
 
             case 30: // Cursed Temple
-                if (stats.magic >= 2) {
-                    inventory.modifyGold(playerIndex, 1000);
-                    message = 'Your magic protected you! Found 1,000 💰! 🏛️✨';
-                    showGoldAnimation(targetCell, 1000);
-                } else if (confirm('Risk losing 1 Health for 1,000 💰? 🏛️')) {
-                    inventory.modifyGold(playerIndex, 1000);
-                    stats.health--;
-                    message = 'Gained 1,000 💰 but lost 1 Health! 🏛️';
-                    showGoldAnimation(targetCell, 1000);
-                    const healthCheck = localCheckHealth();
-                    if (healthCheck) message = healthCheck;
-                } else {
-                    message = 'Wisely avoided the cursed temple 🏛️';
-                }
-                break;
+                GF.createChoiceUI(
+                    `You found a cursed temple! 🏛️\n` +
+                    `Your Health: ${stats.health}\n` +
+                    (stats.health > 2 ? 'Risk 1 Health for 1,000 💰?' : 'Need more than 2 Health to risk!'),
+                    [
+                        stats.health > 2 ? 'Risk Health' : 'Leave',
+                        'Avoid Temple'
+                    ],
+                    (choice) => {
+                        if (choice === '1' && stats.health > 2) {
+                            if (stats.magic >= 2) {
+                                inventory.modifyGold(playerIndex, 1000);
+                                message = 'Your magic protected you! Found 1,000 💰! 🏛️✨';
+                                showGoldAnimation(targetCell, 1000);
+                            } else {
+                                inventory.modifyGold(playerIndex, 1000);
+                                stats.health--;
+                                message = 'Gained 1,000 💰 but lost 1 Health! 🏛️';
+                                showGoldAnimation(targetCell, 1000);
+                            }
+                        } else {
+                            message = stats.health <= 2 ? 
+                                'Not enough health to risk the temple! 🏛️❌' : 
+                                'Wisely avoided the cursed temple 🏛️';
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                        updateGoldDisplay(playerIndex);
+                    }
+                );
+                return; // Exit early due to async nature
 
             case 31: // Fairy Blessing
                 const blessing = Math.floor(Math.random() * 3);
                 switch(blessing) {
                     case 0:
                         stats.health++;
-                        message = 'A fairy blessed you with health! +1 HP 🧚‍♀️❤️';
+                        message = 'A fairy blessed you with health! +1 ❤️';
                         break;
                     case 1:
                         stats.magic++;
-                        message = 'A fairy blessed you with magic! Magic +1 🧚‍♀️✨';
+                        message = 'A fairy blessed you with magic! +1 🔮';
                         break;
                     case 2:
                         stats.potions++;
-                        message = 'A fairy gave you a potion! +1 Potion 🧚‍♀️🧪';
+                        message = 'A fairy gave you a potion! +1 🧪';
                         break;
                 }
                 break;
 
             case 32: // Strange noises
                 if (stats.magic > 0) {
-                    message = 'Your magic warded off the danger! 🌟';
+                    message = 'Your 🔮 warded off the danger!';
+                    stats.magic--;
                 } else {
                     const danger = Math.random() < 0.5;
                     if (danger) {
                         stats.health--;
-                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 health 🌙';
+                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 ❤️';
                     } else {
                         message = 'Strange noises in the night... but nothing happened 🌙';
                     }
