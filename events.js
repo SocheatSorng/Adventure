@@ -82,15 +82,15 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 showGoldAnimation(targetCell, 50);
                 break;
 
-            case 2: // Secret map (second grid)
+            case 2: // Secret map
                 if (!stats.hasMap) {
                     stats.hasMap = true;
-                    message = 'Found a secret map!';
+                    message = 'Found a secret map! 🗺️';
                     const mapAnimation = document.createElement('div');
                     mapAnimation.className = 'map-animation';
                     mapAnimation.innerHTML = '🗺️';
                     targetCell.appendChild(mapAnimation);
-                    setTimeout(() => mapAnimation.remove(), 1000);
+                    setTimeout(() => mapAnimation.remove(), 3000);
                 }
                 break;
 
@@ -106,23 +106,49 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 4: // Health loss
+                const handleHealthLoss = () => {
+                    if (stats.health > 0) {
+                        stats.health = Math.max(0, stats.health - 1);
+                        if (stats.health <= 0) {
+                            message = 'Stepped on a poisonous plant! Back to start 🌿';
+                            sendPlayerToStart();
+                        } else {
+                            message = 'Lost 1 health! 💔';
+                        }
+                    } else {
+                        message = 'Stepped on a poisonous plant! Back to start 🌿';
+                        sendPlayerToStart();
+                    }
+                    showEventMessage(message);
+                    updatePlayerStats(playerIndex);
+                };
+
                 if (stats.potions > 0) {
-                    stats.potions--;
-                    message = 'Used a health potion to survive!';
-                } else if (stats.health > 0) {
-                    stats.health--;
-                    message = checkHealth() || 'Lost 1 health!';
+                    createChoiceUI(
+                        `You stepped on a poisonous plant! 🌿\nYou have ${stats.potions} potion(s).\nCurrent Health: ${stats.health}\n\nUse a potion to survive?`,
+                        [
+                            'Use potion',
+                            'Save potion'
+                        ],
+                        (choice) => {
+                            if (choice === '1') {
+                                stats.potions--;
+                                message = 'Used a health potion to survive! 🧪';
+                            } else {
+                                handleHealthLoss();
+                            }
+                            showEventMessage(message);
+                            updatePlayerStats(playerIndex);
+                        }
+                    );
                 } else {
-                    message = 'Already at 0 health!';
-                    sendPlayerToStart();
+                    handleHealthLoss();
                 }
-                showEventMessage(message);
                 break;
 
             case 5: // Health gain and potion
-                stats.health++;
                 stats.potions++;
-                message = 'Gained 1 health and received a potion!';
+                message = 'Gained a potion!';
                 break;
 
             case 6: // Gambling with two dice
@@ -352,31 +378,38 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 24: // Magic ring
-                const wishes = ['health', 'strength', 'magic', 'gold'];
-                const wishChoice = prompt('The ring grants one wish! Choose:\n1) Health +3\n2) Strength +3\n3) Magic +3\n4) Gold +300\nEnter 1-4:');
-                
-                switch(wishChoice) {
-                    case '1':
-                        stats.health += 3;
-                        message = 'Your wish for health was granted! Health +3 💍';
-                        break;
-                    case '2':
-                        stats.strength += 3;
-                        message = 'Your wish for strength was granted! Strength +3 💍';
-                        break;
-                    case '3':
-                        stats.magic += 3;
-                        message = 'Your wish for magic was granted! Magic +3 💍';
-                        break;
-                    case '4':
-                        inventory.modifyGold(playerIndex, 300);
-                        message = 'Your wish for gold was granted! +300 gold 💍';
-                        showGoldAnimation(targetCell, 300);
-                        break;
-                    default:
-                        stats.magic += 1;
-                        message = 'You failed to make a wish! Got Magic +1 instead 💍';
-                }
+                createChoiceUI(
+                    'The ring grants one wish!',
+                    [
+                        'Health +3',
+                        'Strength +3',
+                        'Magic +3',
+                        'Gold +300'
+                    ],
+                    (choice) => {
+                        switch(choice) {
+                            case '1':
+                                stats.health += 3;
+                                message = 'Your wish for health was granted! Health +3 💍';
+                                break;
+                            case '2':
+                                stats.strength += 3;
+                                message = 'Your wish for strength was granted! Strength +3 💍';
+                                break;
+                            case '3':
+                                stats.magic += 3;
+                                message = 'Your wish for magic was granted! Magic +3 💍';
+                                break;
+                            case '4':
+                                inventory.modifyGold(playerIndex, 300);
+                                message = 'Your wish for gold was granted! +300 gold 💍';
+                                showGoldAnimation(targetCell, 300);
+                                break;
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                    }
+                );
                 break;
 
             case 25: // Cross the river

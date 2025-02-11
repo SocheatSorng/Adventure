@@ -410,3 +410,25 @@ td img[src^="data:image"] {
     justify-content: center;
     opacity: 1;  /* Always visible */
 }
+
+.choice-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.choice-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.choice-button:hover {
+    background: #45a049;
+    transform: scale(1.05);
+}
