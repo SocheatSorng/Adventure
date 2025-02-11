@@ -34,11 +34,13 @@ class PlayerInventory {
         
         // Add status icons
         if (stats.hasMap) statDisplay.push('🗺️');
-        if (stats.status === 'good karma') statDisplay.push('😇');
+        if (stats.angel) statDisplay.push('😇');
         if (stats.hasAlly) statDisplay.push('🤝');
         if (stats.luck > 0) statDisplay.push('🍀');  // Add luck icon if player has luck points
         if (stats.hasClue) statDisplay.push('📜');  // Add clue emoji when player has a clue
         if (stats.hasHouse) statDisplay.push('🏠'); // Add house emoji when player has a house
+        if (stats.devil) statDisplay.push('😈');    // Add devil emoji when player has devil
+        if (stats.hasWand) statDisplay.push('🪄');  // Add wand emoji when player has wand
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');

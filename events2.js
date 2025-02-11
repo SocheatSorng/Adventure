@@ -269,7 +269,7 @@
             case 41: // Secret treasure room
                 const treasureBonus = stats.hasClue ? 500 : 0;
                 params.inventory.modifyGold(playerIndex, 1000 + treasureBonus);
-                message = `Found a secret treasure room! +${1000 + treasureBonus} Gold 💎`;
+                message = `Found a secret treasure room! +${1000 + treasureBonus} 💰`;
                 GF.showGoldAnimation(targetCell, 1000 + treasureBonus);
                 break;
 
@@ -284,143 +284,156 @@
                 break;
 
             case 43: // Crime Lord's deal
-                const dealInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
-                if (confirm(dealInfo + 'Accept Crime Lord\'s deal?\n1,000 Gold but lose karma 🦹‍♂️')) {
-                    params.inventory.modifyGold(playerIndex, 1000);
-                    stats.karma = (stats.karma || 0) - 2;
-                    message = 'Gained 1,000 Gold but your reputation suffers 💰😈';
-                    GF.showGoldAnimation(targetCell, 1000);
-                } else {
-                    stats.karma = (stats.karma || 0) + 1;
-                    message = 'Refused the Crime Lord. Gained good karma 😇';
-                }
+                GF.createChoiceUI(
+                    'You met the Crime Lord! 💰',
+                    [
+                        'ACCEPT - 1,000 Gold but gained bad karma',
+                        'REFUSE - Keep your honor'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // ACCEPT
+                                params.inventory.modifyGold(playerIndex, 1000);
+                                message = 'Accepted dark deal! +1,000 💰, +😈';
+                                stats.devil = true;
+                                GF.showGoldAnimation(targetCell, 1000);
+                                break;
+                            default: // REFUSE
+                                stats.karma = (stats.karma || 0) + 1;
+                                message = 'Refused the Crime Lord. +😇';
+                                stats.angel = true;
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
+                    }
+                )
                 break;
 
             case 44: // Wizard's teleport
-                if (stats.magic > 0) {
+                if (stats.magic >= 3) {
                     const oldPos = params.playerPositions[playerIndex];
-                    const newPos = Math.min(oldPos + 10, params.TOTAL_CELLS - 1);
+                    let stepsForward = 1;  // Default 1 step for having >= 3 magic
+                    
+                    if (stats.hasWand) {
+                        // With wand: moves based on magic amount (max 10)
+                        stepsForward = Math.min(stats.magic, 10);
+                        message = `🪄 amplifies your magic! Moving ${stepsForward} steps forward! 🪄✨`;
+                        stats.hasWand = false;
+                    } else {
+                        message = `Used magic to move 1 step forward! ✨`;
+                    }
+            
+                    const newPos = Math.min(oldPos + stepsForward, params.TOTAL_CELLS - 1);
+                    
                     // Update cell occupancy and move token
                     params.cellOccupancy[oldPos]--;
-
+            
                     const targetRow = Math.floor(newPos / 8);
                     const targetCol = newPos % 8;
                     const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-
+            
                     if (token && newCell) {
                         newCell.appendChild(token);
                         token.style.top = '50%';
                         token.style.left = '50%';
                         params.cellOccupancy[newPos]++;
                     }
-
+            
                     params.playerPositions[playerIndex] = newPos;
-                    message = 'Wizard teleported you forward 10 steps! ✨';
                 } else {
-                    const magicFail = 5; // Always move 5 steps
-                    const newPos = Math.min(params.playerPositions[playerIndex] + magicFail, params.TOTAL_CELLS - 1);
-
-                    // Update cell occupancy and move token
-                    params.cellOccupancy[position]--;
-
-                    const targetRow = Math.floor(newPos / 8);
-                    const targetCol = newPos % 8;
-                    const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
-                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-
-                    if (token && newCell) {
-                        newCell.appendChild(token);
-                        token.style.top = '50%';
-                        token.style.left = '50%';
-                        params.cellOccupancy[newPos]++;
-                    }
-
-                    params.playerPositions[playerIndex] = newPos;
-                    message = 'Teleport partially worked! Moved 5 steps 🌟';
+                    message = 'Not enough 🔮 to cast teleport! Need at least 3 🔮❌';
                 }
+                GF.showEventMessage(message);
                 break;
 
             case 45: // Royal Feast
                 stats.health++;
-                if (stats.karma > 0) {
-                    stats.potions++;
-                    message = 'Attended a Royal Feast! Health +1, Potion +1 👑';
-                } else {
-                    message = 'Attended a Royal Feast! Health +1 👑';
+                if (stats.angel > 0) {
+                    message = 'Attended a Royal Feast! Health +3';
+                    stats.health += 3;
+                } else if (stats.devil > 0) {
+                    message = 'Attended a Royal Feast! Health -3';
+                    stats.health -= 3;
                 }
                 break;
 
             case 46: // Queen's Secret Mission
-                const missionStatus = `Current Stats:\nLuck: ${stats.luck || 0}\nHealth: ${stats.health}\nGold: ${params.inventory.getGold(playerIndex)}\n\n`;
-                if (confirm(missionStatus + 'Accept Queen\'s secret mission?\nRisk health for 2,500 Gold 👑')) {
-                    const missionRoll = params.rollDice() + (stats.luck || 0);
-                    if (missionRoll >= 4) {
-                        params.inventory.modifyGold(playerIndex, 2500);
-                        message = 'Mission successful! Earned 2,500 Gold 🎯';
-                        GF.showGoldAnimation(targetCell, 2500);
-                    } else {
-                        stats.health--;
-                        message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
+                GF.createChoiceUI(
+                    'The Queen offers you a secret mission! 👑',
+                    [
+                        'ACCEPT - Risk health for 2,500 Gold',
+                        'DECLINE - Keep your health'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // ACCEPT
+                                const missionRoll = params.rollDice() + (stats.luck || 0);
+                                if (missionRoll >= 4) {
+                                    params.inventory.modifyGold(playerIndex, 2500);
+                                    message = 'Mission successful! Earned 2,500 Gold 🎯';
+                                    GF.showGoldAnimation(targetCell, 2500);
+                                } else {
+                                    stats.health--;
+                                    message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
+                                }
+                                break;
+                            default: // DECLINE
+                                message = 'Declined the Queen\'s mission 🏃';
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
                     }
-                } else {
-                    message = 'Declined the Queen\'s mission 🏃';
-                }
+                )
                 break;
 
             case 47: // Secret Society
-                const societyChoice = prompt(
-                    'Join Secret Society?\n' +
-                    '1: Light Society (+2 Magic)\n' +
-                    '2: Dark Society (+2 Strength)\n' +
-                    'Enter 1 or 2:'
-                );
-
-                switch (societyChoice) {
-                    case '1':
-                        stats.alignment = 'light';
-                        stats.magic = (stats.magic || 0) + 2;
-                        message = 'Joined the Light Society! Magic +2 ✨';
-                        break;
-                    case '2':
-                        stats.alignment = 'dark';
-                        stats.strength += 2;
-                        stats.magic = Math.max(0, (stats.magic || 0) - 1); // Reduce magic when choosing strength
-                        message = 'Joined the Dark Society! Strength +2, Magic -1 ⚔️';
-                        break;
-                    default:
-                        message = 'Declined to join any society 🚶';
-                }
+                GF.createChoiceUI(
+                    'You found a secret society! 🌌',
+                    [
+                        'JOIN - Light Society (+2 Magic)',
+                        'JOIN - Dark Society (+2 Strength)',
+                        'DECLINE - Stay neutral'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // JOIN LIGHT
+                                stats.alignment = 'light';
+                                stats.magic = (stats.magic || 0) + 2;
+                                message = 'Joined the Light Society! Magic +2 ✨';
+                                break;
+                            case '2': // JOIN DARK
+                                stats.alignment = 'dark';
+                                stats.strength += 2;
+                                stats.magic = Math.max(0, (stats.magic || 0) - 1); // Reduce magic when choosing strength
+                                message = 'Joined the Dark Society! Strength +2, Magic -1 ⚔️';
+                                break;
+                            default: // DECLINE
+                                message = 'Declined to join any society 🚶';
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                    }
+                )
                 break;
 
             case 48: // City in Chaos
-                const chaosInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
-                const chaosChoice = prompt(
-                    chaosInfo +
-                    'City is in chaos!\n' +
-                    'HELP: Gain good karma\n' +
-                    'LOOT: Get 500-1000 Gold but lose karma\n' +
-                    'Type HELP or LOOT:'
-                )?.toUpperCase();
-
-                if (chaosChoice === 'HELP') {
-                    stats.karma = (stats.karma || 0) + 2;
-                    if (stats.hasAlly) {
-                        params.inventory.modifyGold(playerIndex, 300);
-                        message = 'Helped restore order! Karma +2 and found 300 Gold! 😇';
-                        GF.showGoldAnimation(targetCell, 300);
-                    } else {
-                        message = 'Helped restore order! Gained good karma 😇';
-                    }
-                } else if (chaosChoice === 'LOOT') {
-                    const lootAmount = Math.floor(Math.random() * 500) + 500;
-                    params.inventory.modifyGold(playerIndex, lootAmount);
-                    stats.karma = (stats.karma || 0) - 1;
-                    message = `Looted ${lootAmount} Gold but lost karma 💰😈`;
-                    GF.showGoldAnimation(targetCell, lootAmount);
+                if (stats.hasAlly) {
+                    message = 'Your ally helped you escape the chaos safely! 🤝';
+                    stats.hasAlly = false; // Ally leaves after helping
+                    params.inventory.markItemAsUsed(playerIndex, 'ally');
                 } else {
-                    message = 'Fled the chaos 🏃';
+                    // Send player back to start
+                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    message = 'Got caught in the chaos! Back to start! 🌪️';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 49: // Dark Warrior
