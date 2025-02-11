@@ -29,7 +29,7 @@ class PlayerInventory {
             `${stats.health} ❤️`,
             `${stats.strength} 💪`,
             `${stats.potions} 🧪`,
-            `${stats.magic} ✨`
+            `${stats.magic} 🔮`
         ];
         
         // Add status icons

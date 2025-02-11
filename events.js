@@ -48,7 +48,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
         switch(gridNumber) {
             case 1: // Gold column (first grid)
                 inventory.modifyGold(playerIndex, 50);
-                message = 'Found 50 gold!';
+                message = 'Found 50 💰!';
                 showGoldAnimation(targetCell, 50);
                 break;
 
@@ -67,10 +67,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 3: // Bandit attack
                 if (stats.strength < 3) {
                     inventory.modifyGold(playerIndex, -100);
-                    message = 'Lost to bandits! -100 gold';
+                    message = 'Lost to bandits! -100 💰';
                 } else {
                     inventory.modifyGold(playerIndex, 150);
-                    message = 'Defeated bandits! +150 gold';
+                    message = 'Defeated bandits! +150 💰';
                     showGoldAnimation(targetCell, 150);
                 }
                 break;
@@ -128,11 +128,11 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     const houseRoll = rollDice();
                     if (playerRoll > houseRoll) {
                         inventory.modifyGold(playerIndex, 200);
-                        message += `Computer rolled ${houseRoll}. You won 200 gold!`;
+                        message += `Computer rolled ${houseRoll}. You won 200 💰!`;
                         showGoldAnimation(targetCell, 200);
                     } else {
                         inventory.modifyGold(playerIndex, -100);
-                        message += `Computer rolled ${houseRoll}. You lost 100 gold!`;
+                        message += `Computer rolled ${houseRoll}. You lost 100 💰!`;
                     }
                     showEventMessage(message);
                     updatePlayerStats(playerIndex);
@@ -142,7 +142,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 7: // Trap
                 inventory.modifyGold(playerIndex, -50);
-                message = 'Fell into a trap! Lost 50 gold.';
+                message = 'Fell into a trap! Lost 50 💰.';
                 break;
 
             case 8: // Bridge collapse - back to start
@@ -165,7 +165,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 
             case 9: // Secret spell (ninth grid)
                 stats.magic++;
-                message = 'You learned a secret spell! Magic +1';
+                message = 'You learned a secret spell! +1🔮';
                 break;
 
             case 10: // Lose turn
@@ -188,12 +188,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 12: // Mystic sword
                 stats.strength += 2;
-                message = 'You found a mystic sword! Strength +2';
+                message = 'You found a mystic sword! +2💪';
                 break;
 
             case 13: // Thieves
                 inventory.modifyGold(playerIndex, -100);
-                message = 'Thieves stole your gold! Lost 100 gold';
+                message = 'Thieves stole your 💰! Lost 100 💰';
                 break;
 
             case 14: // Horse
@@ -202,26 +202,43 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     movePlayer(playerIndex, 2);
                     showEventMessage('Your horse carries you 2 steps further!');
                 }, 1000);
-                message = 'You tamed a horse!';
+                message = 'You tamed a horse! 🐎';
                 break;
 
-            case 15: // Riddle
-                const answers = ['A', 'B', 'C'];
-                const correctAnswer = Math.floor(Math.random() * answers.length);
-                const playerAnswer = prompt(`Solve the riddle!\nWhat goes up but never comes down?\nA) Age\nB) Growth\nC) Time\nEnter A, B, or C:`);
-                
-                if (playerAnswer && playerAnswer.toUpperCase() === answers[correctAnswer]) {
-                    inventory.modifyGold(playerIndex, 200);
-                    message = 'Correct answer! Won 200 gold!';
-                    showGoldAnimation(targetCell, 200);
-                } else {
-                    message = 'Wrong answer! Better luck next time!';
-                }
-                break;
+            case 15: // Math Problem
+                const num1 = Math.floor(Math.random() * 10) + 1;
+                const num2 = Math.floor(Math.random() * 10) + 1;
+                const operator = ['+', '-', '*'][Math.floor(Math.random() * 3)];
+                const correctAnswer = operator === '+' ? num1 + num2 : 
+                                    operator === '-' ? num1 - num2 : 
+                                    num1 * num2;
+
+                GF.createChoiceUI(
+                    `Solve: ${num1} ${operator} ${num2} = ?`,
+                    [
+                        `${correctAnswer - 1}`,
+                        `${correctAnswer}`,
+                        `${correctAnswer + 1}`,
+                        `${correctAnswer + 2}`
+                    ],
+                    (choice) => {
+                        if (choice === '2') {  // Second option is always correct
+                            inventory.modifyGold(playerIndex, 200);
+                            message = 'Correct! You won 200 💰!';
+                            showGoldAnimation(targetCell, 200);
+                        } else {
+                            message = 'Wrong answer! Better luck next time!';
+                        }
+                        showEventMessage(message);
+                        updatePlayerStats(playerIndex);
+                        updateGoldDisplay(playerIndex);
+                    }
+                );
+                return; // Exit early due to async nature
 
             case 16: // Rare gem
                 inventory.modifyGold(playerIndex, 500);
-                message = 'Found a rare gem! Gained 500 gold!';
+                message = 'Found a rare gem! Gained 500 💰!';
                 showGoldAnimation(targetCell, 500);
                 break;
 
@@ -237,7 +254,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 18: // Merchant's armor
-                if (inventory.getGold(playerIndex) >= 300 && confirm('Buy powerful armor for 300 gold? (+2 Health)')) {
+                if (inventory.getGold(playerIndex) >= 300 && confirm('Buy powerful armor for 300 💰? (+2 Health)')) {
                     inventory.modifyGold(playerIndex, -300);
                     stats.health += 2;
                     message = 'You bought powerful armor! Health +2 🛡️';
@@ -289,7 +306,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 switch(treasureType) {
                     case 0:
                         inventory.modifyGold(playerIndex, 400);
-                        message = 'Found ancient gold! +400 gold 🏆';
+                        message = 'Found ancient 💰! +400 💰 🏆';
                         showGoldAnimation(targetCell, 400);
                         break;
                     case 1:
@@ -318,7 +335,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 22: // Sorcerer's deal
-                if (inventory.getGold(playerIndex) >= 200 && confirm('The sorcerer offers: Pay 200 gold for +2 Magic. Accept? ⚡')) {
+                if (inventory.getGold(playerIndex) >= 200 && confirm('The sorcerer offers: Pay 200 💰 for +2 Magic. Accept? ⚡')) {
                     inventory.modifyGold(playerIndex, -200);
                     stats.magic += 2;
                     message = 'The sorcerer granted you power! Magic +2 ⚡';
@@ -331,7 +348,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 stats.hasAlly = true;
                 stats.strength += 2;
                 inventory.modifyGold(playerIndex, 100);
-                message = 'You saved the village! Gained an ally, Strength +2, Gold +100 🏡';
+                message = 'You saved the village! Gained an ally, Strength +2, 💰 +100 🏡';
                 
                 // Add ally gained animation
                 const allyAnimation = document.createElement('div');
@@ -351,7 +368,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         'Health +3',
                         'Strength +3',
                         'Magic +3',
-                        'Gold +300'
+                        '+300 💰'
                     ],
                     (choice) => {
                         switch(choice) {
@@ -369,7 +386,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                 break;
                             case '4':
                                 inventory.modifyGold(playerIndex, 300);
-                                message = 'Your wish for gold was granted! +300 gold 💍';
+                                message = 'Your wish for gold was granted! +300 💰 💍';
                                 showGoldAnimation(targetCell, 300);
                                 break;
                         }
@@ -392,7 +409,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 26: // Rescue traveler
                 if (stats.strength >= 2) {
                     inventory.modifyGold(playerIndex, 400);
-                    message = 'Rescued a trapped traveler! Gained 400 Gold 🦸';
+                    message = 'Rescued a trapped traveler! Gained 400 💰 🦸';
                     showGoldAnimation(targetCell, 400);
                 } else {
                     message = 'Not strong enough to help the traveler 😢';
@@ -445,10 +462,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 } else {
                     if (inventory.getGold(playerIndex) >= 500) {
                         inventory.modifyGold(playerIndex, -500);
-                        message = 'Paid 500 Gold to appease the dragon 🐲💰';
+                        message = 'Paid 500 💰 to appease the dragon 🐲💰';
                     } else {
                         playerPositions[playerIndex] = 0;
-                        message = 'Not enough gold to bribe! Back to start 🐲';
+                        message = 'Not enough 💰 to bribe! Back to start 🐲';
                     }
                 }
                 break;
@@ -456,12 +473,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 30: // Cursed Temple
                 if (stats.magic >= 2) {
                     inventory.modifyGold(playerIndex, 1000);
-                    message = 'Your magic protected you! Found 1,000 Gold! 🏛️✨';
+                    message = 'Your magic protected you! Found 1,000 💰! 🏛️✨';
                     showGoldAnimation(targetCell, 1000);
-                } else if (confirm('Risk losing 1 Health for 1,000 Gold? 🏛️')) {
+                } else if (confirm('Risk losing 1 Health for 1,000 💰? 🏛️')) {
                     inventory.modifyGold(playerIndex, 1000);
                     stats.health--;
-                    message = 'Gained 1,000 Gold but lost 1 Health! 🏛️';
+                    message = 'Gained 1,000 💰 but lost 1 Health! 🏛️';
                     showGoldAnimation(targetCell, 1000);
                     const healthCheck = localCheckHealth();
                     if (healthCheck) message = healthCheck;
