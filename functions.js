@@ -128,5 +128,36 @@ window.GameFunctions = {
     askToUseItem: function(stats, itemName, benefit) {
         if (!stats[itemName]) return false;
         return confirm(`You have ${itemName}. Do you want to use it? ${benefit}`);
+    },
+
+    animateTokenMovement: function(token, newPosition, playerPositions, playerIndex) {
+        // Add animation class
+        token.classList.add('token-moving');
+        
+        const targetRow = Math.floor(newPosition / 8);
+        const targetCol = newPosition % 8;
+        const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
+        
+        if (newCell) {
+            // Animate movement
+            const currentRect = token.getBoundingClientRect();
+            const targetRect = newCell.getBoundingClientRect();
+            const xDiff = targetRect.left - currentRect.left;
+            const yDiff = targetRect.top - currentRect.top;
+            
+            token.style.transition = 'transform 1s ease-in-out';
+            token.style.transform = `translate(${xDiff}px, ${yDiff}px)`;
+            
+            // After animation, move token to new cell
+            setTimeout(() => {
+                token.style.transition = '';
+                token.style.transform = '';
+                newCell.appendChild(token);
+                token.style.top = '50%';
+                token.style.left = '50%';
+                token.classList.remove('token-moving');
+                playerPositions[playerIndex] = newPosition;
+            }, 1000);
+        }
     }
 };

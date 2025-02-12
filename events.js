@@ -57,8 +57,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 2: // Secret map
                 stats.hasMap = true;
                 message = 'Found a secret map! 🗺️';
-
-                // Add map gained animation
                 GF.showItemAnimation(targetCell, '🗺️');
                 break;
 
@@ -86,8 +84,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 5: // Health gain and potion
                 stats.hasPotion = true;
                 message = 'Gained a 🧪!';
-
-                // Add potion gained animation
                 GF.showItemAnimation(targetCell, '🧪');
                 break;
 
@@ -123,6 +119,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     const lostGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
                     inventory.modifyGold(playerIndex, -lostGold);
                     message = `Fell into a trap! Lost ${lostGold} 💰!`;
+                    showLostGoldAnimation(targetCell, lostGold);
                 }
                 break;
 
@@ -153,8 +150,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 9: // Secret spell (ninth grid)
                 stats.magic++;
                 message = 'You learned a secret spell! +1🔮';
-
-                // Create floating animation for magic icon
                 GF.showItemAnimation(targetCell, '🔮');
                 break;
 
@@ -166,8 +161,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 11: // Good karma
                 stats.status = 'good karma';
                 message = 'You helped a lost child! + 😇';
-                
-                // Create floating animation for karma icon
                 GF.showItemAnimation(targetCell, '😇');
                 break;
 
@@ -181,6 +174,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 const lostGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
                 inventory.modifyGold(playerIndex, lostGold);
                 message = `Thieves stole ${lostGold} 💰 from you!`;
+                showLostGoldAnimation(targetCell, lostGold);
                 break;
 
             case 14: // Horse
@@ -198,14 +192,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 if (stats.angel) {
                     stats.hasAlly = true;
                     message = 'The ghost is moved by your pure heart! +🤝';
-                    
-                    // Show ally animation
                     GF.showItemAnimation(targetCell, '🤝');
                 } else {
                     stats.devil = true;
                     message = 'The ghost curses you with dark karma! +😈';
-                    
-                    // Show devil karma animation
                     GF.showItemAnimation(targetCell, '😈');
                 }
                 break;
@@ -215,8 +205,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 const gemValue = Math.floor(Math.random() * 201) + 400;  // 400-600 range
                 inventory.modifyGold(playerIndex, gemValue);
                 message = `Found a rare gem! +${gemValue} 💰`;
-                
-                // Show gem and gold animation
                 GF.showGoldAnimation(targetCell, gemValue);
                 break;
 
@@ -243,6 +231,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                             inventory.modifyGold(playerIndex, -300);
                             stats.strength += 3;
                             message = 'You bought powerful armor! +3 💪';
+                            GF.showItemAnimation(targetCell, '💪');
                         } else if (choice === '1') {
                             message = 'Not enough 💰 to buy the armor!';
                         } else {
@@ -344,6 +333,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                     stats.strength -= 2;
                                     stats.magic += 3;
                                     message = 'Traded 2 strength for 3 magic! 💪➡️🔮';
+                                    GF.showItemAnimation(targetCell, '🔮');
                                 } else {
                                     message = 'Not enough strength to trade! 💪❌';
                                 }
@@ -353,6 +343,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                     stats.magic -= 2;
                                     stats.strength += 3;
                                     message = 'Traded 2 magic for 3 strength! 🔮➡️💪';
+                                    GF.showItemAnimation(targetCell, '💪');
                                 } else {
                                     message = 'Not enough magic to trade! 🔮❌';
                                 }
@@ -369,8 +360,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 23: // Village help
                 stats.hasAlly = true;
                 message = 'You saved the village! + 🤝';
-
-                // Add ally gained animation
                 GF.showItemAnimation(targetCell, '🤝');
                 break;
 
@@ -451,25 +440,31 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 26: // Rescue traveler
                 if (stats.strength >= 2) {
+                    stats.hasAlly = true;
                     inventory.modifyGold(playerIndex, 400);
-                    message = 'Rescued a trapped traveler! Gained 400 💰';
+                    message = 'Rescued a trapped traveler! +🤝 +400 💰';
                     showGoldAnimation(targetCell, 400);
+                    GF.showItemAnimation(targetCell, '🤝');
                 } else {
                     message = 'Not strong enough to help the traveler 😢';
                 }
                 break;
 
             case 27: // Mysterious Fog
-                if (!stats.hasMap) {
-                    stats.turns = Math.max(0, (stats.turns || 0) - 1);
-                    message = 'Lost in mysterious fog! Skip 1 turn 🌫️';
-                } else {
+                if (stats.hasMap) {
                     message = 'Your map helped you navigate through the fog! 🗺️';
+                    stats.hasMap = false;
+                    inventory.markItemAsUsed(playerIndex, 'map');
+                } else {
+                    message = 'Lost in mysterious fog! Skip 1 turn 🌫️';
+                    stats.skipNextTurn = true;
                 }
                 break;
 
             case 28: // Abandoned ship
-                if (stats.hasMap) {
+                if (stats.hasClue) {
+                    stats.hasClue = false;
+                    inventory.markItemAsUsed(playerIndex, 'clue');
                     const shipLoot = Math.floor(Math.random() * 300) + 200; // 200-500 gold
                     inventory.modifyGold(playerIndex, shipLoot);
                     message = `Found ${shipLoot} 💰 on the abandoned ship! 🚢`;
@@ -483,6 +478,59 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 29: // Dragon encounter
+            const canFight = stats.strength >= 6;
+            const canBribe = inventory.getGold(playerIndex) >= 500;
+            const hasAlly = stats.hasAlly;
+        
+            if (!canFight && !canBribe && !hasAlly) {
+                // Automatic run away if no other options
+                const isLucky = Math.random() < 0.5;
+                const steps = Math.floor(Math.random() * 6) + 1;
+                
+                if (isLucky) {
+                    setTimeout(() => {
+                        movePlayer(playerIndex, steps);
+                    }, 1000);
+                    message = `Found an escape route! Moving forward ${steps} steps 🏃`;
+                } else {
+                    // Move backward with animation
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token) {
+                        token.classList.add('token-moving');
+                        setTimeout(() => {
+                            const newPosition = Math.max(0, playerPositions[playerIndex] - steps);
+                            playerPositions[playerIndex] = newPosition;
+                            const targetRow = Math.floor(newPosition / 8);
+                            const targetCol = newPosition % 8;
+                            const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
+                            
+                            if (newCell) {
+                                // Animate movement
+                                const currentRect = token.getBoundingClientRect();
+                                const targetRect = newCell.getBoundingClientRect();
+                                const xDiff = targetRect.left - currentRect.left;
+                                const yDiff = targetRect.top - currentRect.top;
+                                
+                                token.style.transition = 'transform 1s ease-in-out';
+                                token.style.transform = `translate(${xDiff}px, ${yDiff}px)`;
+                                
+                                setTimeout(() => {
+                                    token.style.transition = '';
+                                    token.style.transform = '';
+                                    newCell.appendChild(token);
+                                    token.style.top = '50%';
+                                    token.style.left = '50%';
+                                    token.classList.remove('token-moving');
+                                }, 1000);
+                            }
+                        }, 500);
+                    }
+                    message = `Dragon chased you back ${steps} steps! 🐲`;
+                }
+                showEventMessage(message);
+                updatePlayerStats(playerIndex);
+                updateGoldDisplay(playerIndex);
+            } else {
                 GF.createChoiceUI(
                     `A fierce dragon blocks your path! 🐲\n` +
                     (stats.hasAlly ? 'Your ally offers to distract the dragon!\n' : '') +
@@ -495,11 +543,11 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     (choice) => {
                         if (choice === '1') {
                             if (stats.strength >= 6) {
-                                stats.strength += 2;
-                                message = 'You defeated the dragon with your strength! +2 💪';
+                                stats.strength -= 4;
+                                message = 'You defeated the dragon but exhausted and lost 4 💪!';
                             } else {
                                 playerPositions[playerIndex] = 0;
-                                message = 'The dragon was too powerful! Back to start 🐲';
+                                message = 'The dragon was too powerful! Back to start';
                             }
                         } else if (choice === '2') {
                             if (inventory.getGold(playerIndex) >= 500) {
@@ -507,39 +555,60 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                 message = 'Paid 500 💰 to appease the dragon';
                             } else {
                                 playerPositions[playerIndex] = 0;
-                                message = 'Not enough 💰 to bribe! Back to start 🐲';
+                                message = 'Not enough 💰 to bribe! Back to start';
                             }
                         } else if (stats.hasAlly) {
                             // Ally sacrifices themselves
                             stats.hasAlly = false;
+                            inventory.markItemAsUsed(playerIndex, 'ally');
                             message = 'Your ally sacrificed themselves to save you from the dragon! 🤝😢';
                             movePlayer(playerIndex, 1); // Move forward 1 space safely
                         } else {
-                            // Random run away outcome (existing code)
+                            // Random run away outcome with animation
                             const isLucky = Math.random() < 0.5;
                             const steps = Math.floor(Math.random() * 6) + 1;
+                            
                             if (isLucky) {
                                 setTimeout(() => {
                                     movePlayer(playerIndex, steps);
                                 }, 1000);
                                 message = `Found an escape route! Moving forward ${steps} steps 🏃`;
                             } else {
-                                const newPosition = Math.max(0, playerPositions[playerIndex] - steps);
-                                setTimeout(() => {
-                                    const targetRow = Math.floor(newPosition / 8);
-                                    const targetCol = newPosition % 8;
-                                    const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
-                                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                                    if (token && newCell) {
-                                        token.classList.add('token-moving');
-                                        newCell.appendChild(token);
-                                        token.style.top = '50%';
-                                        token.style.left = '50%';
-                                        setTimeout(() => token.classList.remove('token-moving'), 1000);
-                                    }
-                                    playerPositions[playerIndex] = newPosition;
-                                }, 1000);
-                                message = `Dragon chased you back ${steps} steps! 🐲🏃`;
+                                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                                if (token) {
+                                    // Add animation class
+                                    token.classList.add('token-moving');
+                                    
+                                    setTimeout(() => {
+                                        const newPosition = Math.max(0, playerPositions[playerIndex] - steps);
+                                        playerPositions[playerIndex] = newPosition;
+                                        const targetRow = Math.floor(newPosition / 8);
+                                        const targetCol = newPosition % 8;
+                                        const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
+                                        
+                                        if (newCell) {
+                                            // Animate movement
+                                            const currentRect = token.getBoundingClientRect();
+                                            const targetRect = newCell.getBoundingClientRect();
+                                            const xDiff = targetRect.left - currentRect.left;
+                                            const yDiff = targetRect.top - currentRect.top;
+                                            
+                                            token.style.transition = 'transform 1s ease-in-out';
+                                            token.style.transform = `translate(${xDiff}px, ${yDiff}px)`;
+                                            
+                                            // After animation, move token to new cell
+                                            setTimeout(() => {
+                                                token.style.transition = '';
+                                                token.style.transform = '';
+                                                newCell.appendChild(token);
+                                                token.style.top = '50%';
+                                                token.style.left = '50%';
+                                                token.classList.remove('token-moving');
+                                            }, 1000);
+                                        }
+                                    }, 500);
+                                }
+                                message = `Dragon chased you back ${steps} steps!`;
                             }
                         }
                         showEventMessage(message);
@@ -547,68 +616,64 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         updateGoldDisplay(playerIndex);
                     }
                 );
+            }
                 return;
 
             case 30: // Cursed Temple
-                GF.createChoiceUI(
-                    `You found a cursed temple! 🏛️\n` +
-                    `Your Health: ${stats.health}\n` +
-                    (stats.health > 2 ? 'Risk 1 Health for 1,000 💰?' : 'Need more than 2 Health to risk!'),
-                    [
-                        stats.health > 2 ? 'Risk Health' : 'Leave',
-                        'Avoid Temple'
-                    ],
-                    (choice) => {
-                        if (choice === '1' && stats.health > 2) {
-                            if (stats.magic >= 2) {
+                if (stats.hasClover) {
+                    GF.createChoiceUI(
+                        `You found a cursed temple! \n`,
+                        `Risk your clover for 1,000 gold?`,
+                        [
+                            'Use clover (1,000 💰)',
+                            'Keep clover'
+                        ],
+                        (choice) => {
+                            if (choice === '1') {
                                 inventory.modifyGold(playerIndex, 1000);
-                                message = 'Your magic protected you! Found 1,000 💰! 🏛️✨';
+                                stats.hasClover = false;
+                                inventory.markItemAsUsed(playerIndex, 'clover');
+                                message = 'Your lucky clover turned the curse into gold! +1,000 💰 🍀✨';
                                 showGoldAnimation(targetCell, 1000);
                             } else {
-                                inventory.modifyGold(playerIndex, 1000);
-                                stats.health--;
-                                message = 'Gained 1,000 💰 but lost 1 Health! 🏛️';
-                                showGoldAnimation(targetCell, 1000);
+                                message = 'Decided to keep your lucky clover for later 🍀';
                             }
-                        } else {
-                            message = stats.health <= 2 ? 
-                                'Not enough health to risk the temple! 🏛️❌' : 
-                                'Wisely avoided the cursed temple 🏛️';
+                            showEventMessage(message);
+                            updatePlayerStats(playerIndex);
+                            updateGoldDisplay(playerIndex);
                         }
-                        showEventMessage(message);
-                        updatePlayerStats(playerIndex);
-                        updateGoldDisplay(playerIndex);
-                    }
-                );
+                    );
+                } else {
+                    message = 'A cursed temple... better stay away!';
+                    showEventMessage(message);
+                }
                 return; // Exit early due to async nature
 
             case 31: // Fairy Blessing
-                const blessing = Math.floor(Math.random() * 3);
+                const blessing = Math.floor(Math.random() * 2);
                 switch(blessing) {
                     case 0:
-                        stats.health++;
-                        message = 'A fairy blessed you with health! +1 ❤️';
-                        break;
-                    case 1:
                         stats.magic++;
                         message = 'A fairy blessed you with magic! +1 🔮';
+                        GF.showItemAnimation(targetCell, '🔮');
                         break;
-                    case 2:
+                    case 1:
                         stats.potions++;
-                        message = 'A fairy gave you a potion! +1 🧪';
+                        message = 'A fairy gave you a strength! +1 💪';
+                        GF.showItemAnimation(targetCell, '💪');
                         break;
                 }
                 break;
 
             case 32: // Strange noises
-                if (stats.magic > 0) {
+                if (stats.magic > 2) {
                     message = 'Your 🔮 warded off the danger!';
-                    stats.magic--;
+                    stats.magic -= 2;
                 } else {
                     const danger = Math.random() < 0.5;
                     if (danger) {
-                        stats.health--;
-                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 ❤️';
+                        stats.skipNextTurn = true;
+                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 turn';
                     } else {
                         message = 'Strange noises in the night... but nothing happened 🌙';
                     }
