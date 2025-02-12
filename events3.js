@@ -3,6 +3,7 @@
     window.handleLateEventsExtension = function(playerIndex, position, targetCell, params) {
         const stats = params.inventory.getStats(playerIndex);
         let message = '';
+        const GF = window.GameFunctions;
         
         // Calculate grid number
         const gridNumber = position + 1;
@@ -13,224 +14,257 @@
 
         switch(gridNumber) {
             case 57: // Sacred Chamber
-                const riddleInfo = `Current Stats:\nWisdom: ${stats.wisdom || 0}\nHealth: ${stats.health}\n\n`;
-                const riddleAnswer = prompt(
-                    riddleInfo +
-                    'Answer the riddle:\n' +
-                    'I have cities, but no houses.\n' +
-                    'I have mountains, but no trees.\n' +
-                    'I have water, but no fish.\n' +
-                    'I have roads, but no cars.\n' +
-                    'What am I? 📜'
-                );
+            if (stats.devil) {
+                // Evil karma: move backward to grid 55 (index 54)
+                params.playerPositions[playerIndex] = 54;  // Move to grid 55
+                
+                // Move token to grid 55
+                const portalCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(54/8) + 1}) td:nth-child(${54%8 + 1})`);
+                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                
+                if (token && portalCell) {
+                    // Animate token movement
+                    setTimeout(() => {
+                        portalCell.appendChild(token);
+                        token.style.top = '50%';
+                        token.style.left = '50%';
+                        walkingAnimation.remove();
+                        message = 'Dark aura sends you to the Mysterious Portal! 😈✨';
+                        GF.showEventMessage(message);
+                        }, 1000);
+                    }
+                params.inventory.markItemAsUsed(playerIndex, 'devil');
+                } else if (stats.angel) {
+                    // Good karma: receive random item
+                    const possibleItems = [
+                        { name: 'lucky clover', stat: 'hasClover', emoji: '🍀' },
+                        { name: 'map', stat: 'hasMap', emoji: '🗺️' },
+                        { name: 'staff', stat: 'hasStaff', emoji: '🪄' },
+                        { name: 'ally', stat: 'hasAlly', emoji: '🤝' },
+                        { name: 'clue', stat: 'hasClue', emoji: '📜' }
+                    ];
 
-                if (riddleAnswer?.toLowerCase() === 'map') {
-                    inventory.modifyGold(playerIndex, 1000);
-                    stats.wisdom = (stats.wisdom || 0) + 1;
-                    message = 'Riddle solved! +1,000 Gold and gained wisdom 📚✨';
-                    showGoldAnimation(targetCell, 1000);
+                    // Filter out items player already has
+                    const availableItems = possibleItems.filter(item => !stats[item.stat]);
+
+                    if (availableItems.length > 0) {
+                        // Pick random item from available ones
+                        const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+                        stats[randomItem.stat] = true;
+                        message = `Sacred blessing! Received ${randomItem.name}! ${randomItem.emoji}`;
+
+                        // Show item animation
+                        const itemAnimation = document.createElement('div');
+                        itemAnimation.className = 'map-animation';
+                        itemAnimation.innerHTML = randomItem.emoji;
+                        targetCell.appendChild(itemAnimation);
+                        setTimeout(() => itemAnimation.remove(), 1000);
+                        params.inventory.markItemAsUsed(playerIndex, 'angel');
+                    } else {
+                        message = 'Sacred chamber shines with approval! 😇✨';
+                    }
                 } else {
-                    stats.health--;
-                    message = localCheckHealth() || 'Wrong answer! Lost 1 health ❌';
+                    message = 'The sacred chamber remains silent... 🏛️';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 58: // Titan Battle
-                const titanInfo = `Your Power:\nStrength: ${stats.strength}\nMystic Staff: ${stats.hasMysticStaff ? 'Yes' : 'No'}\nLuck: ${stats.luck || 0}\n\n`;
-                const titanChoice = prompt(
-                    titanInfo +
-                    'A titan appears! 🗿\n' +
-                    'FIGHT: Need Strength 8+\n' +
-                    'SNEAK: Need Map or Luck 3+\n' +
-                    'BARGAIN: Cost 1,000 Gold\n' +
-                    'Type your choice:'
-                )?.toUpperCase();
+                if (stats.strength >= 10) {
+                    message = 'Your incredible strength defeats the Titan! 💪🏆';
+                    if(stats.hasAlly)
+                        stats.titanAlly = true; // Titan becomes ally
+                    stats.strength -= 10;
 
-                switch(titanChoice) {
-                    case 'FIGHT':
-                        if (stats.strength >= 8 || stats.hasMysticStaff) {
-                            stats.strength += 2;
-                            message = 'Defeated the titan! Strength +2 ⚔️';
-                        } else {
-                            playerPositions[playerIndex] = 0;
-                            message = 'The titan was too powerful! Back to start 🗿';
+                } else if (stats.hasAlly) {
+                    GF.createChoiceUI(
+                        'The Titan is too strong! Your ally offers to help!\n',
+                        [
+                            'SACRIFICE - Ally fights Titan',
+                            'RETREAT - Move to grid 17'
+                        ],
+                        (choice) => {
+                            if (choice === '1') {
+                                
+                                params.inventory.markItemAsUsed(playerIndex, 'ally');
+                                message = 'Your 🤝 sacrificed themselves to save you!';
+                            } else {
+                                // Move to grid 17 (index 16)
+                                params.playerPositions[playerIndex] = 16;
+                                const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(16/8) + 1}) td:nth-child(${16%8 + 1})`);
+                                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                                if (token && newCell) {
+                                    newCell.appendChild(token);
+                                    token.style.top = '50%';
+                                    token.style.left = '50%';
+                                }
+                                message = 'Retreated from the Titan! Moved back to the forest';
+                            }
+                            GF.showEventMessage(message);
+                            params.updatePlayerStats(playerIndex);
                         }
-                        break;
-                    case 'SNEAK':
-                        if (stats.hasMap || stats.luck >= 3) {
-                            setTimeout(() => movePlayer(playerIndex, 2), 500);
-                            message = 'Successfully snuck past! Moving forward 🦶';
-                        } else {
-                            stats.health--;
-                            message = localCheckHealth() || 'Failed to sneak! Lost 1 health 👀';
-                        }
-                        break;
-                    case 'BARGAIN':
-                        if (inventory.getGold(playerIndex) >= 1000) {
-                            inventory.modifyGold(playerIndex, -1000);
-                            stats.titanAlly = true;
-                            message = 'The titan becomes your ally! Paid 1,000 Gold 🤝';
-                        } else {
-                            message = 'Not enough gold to bargain 💰❌';
-                        }
-                        break;
-                    default:
-                        playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 3);
-                        message = 'Hesitation cost you! Moved back 3 spaces 🏃';
+                    );
+                    return; // Exit early due to async choice
+                } else {
+                    // Move to grid 17 (index 16)
+                    params.playerPositions[playerIndex] = 16;
+                    const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(16/8) + 1}) td:nth-child(${16%8 + 1})`);
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token && newCell) {
+                        newCell.appendChild(token);
+                        token.style.top = '50%';
+                        token.style.left = '50%';
+                    }
+                    message = 'The Titan is too powerful! Moved back to the forest';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                break;
+                
+            case 59: // Cursed Crown
+                if (stats.hasCrown) {
+                    // Auto-win if player has crown
+                    params.inventory.modifyGold(playerIndex, 10000);
+                    message = '👑 VICTORY! The crown recognizes its true ruler! +10,000 💰';
+                    GF.showGoldAnimation(targetCell, 10000);
+                    
+                    // Show crown animation
+                    const crownAnimation = document.createElement('div');
+                    crownAnimation.className = 'map-animation';
+                    crownAnimation.innerHTML = '👑';
+                    crownAnimation.style.fontSize = '32px';
+                    targetCell.appendChild(crownAnimation);
+                    setTimeout(() => crownAnimation.remove(), 1500);
+                    
+                    setTimeout(() => {
+                        alert(`Congratulations Player ${playerIndex + 1}!\nYou have won the game with the 👑! `);
+                    }, 1000);
+                } else {
+                    message = 'A mysterious crown beckons in the distance...';
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
-            case 59: // Cursed Crown
-                const crownInfo = `Status:\nAlignment: ${stats.alignment || 'neutral'}\nKarma: ${stats.karma || 0}\nGold: ${inventory.getGold(playerIndex)}\n\n`;
+            case 60: // Earthquake Trial
+                if (stats.hasStaff) {
+                    // Teleport to Mysterious Portal (grid 55, index 54)
+                    params.playerPositions[playerIndex] = 54;
+                    const portalCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(54/8) + 1}) td:nth-child(${54%8 + 1})`);
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token && portalCell) {
+                        portalCell.appendChild(token);
+                        token.style.top = '50%';
+                        token.style.left = '50%';
+                    }
+                    message = 'Your staff protected you! Teleported to the Mysterious Portal 🪄✨';
+                    params.inventory.markItemAsUsed(playerIndex, 'staff');
+                } else {
+                    // Send player back to start
+                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    message = 'Earthquake throws you back to the beginning! 🌋';
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                break;
 
-                if (stats.alignment === 'light' && stats.karma > 0) {
-                    message = 'Your pure heart lifts the curse! Crown is yours! 👑✨';
-                    stats.hasCrown = true;
+            case 61: // Ultimate Boss Battle
+                // Automatically lose a turn
+                stats.skipNextTurn = true;
+                message = 'The Ultimate Boss drains your energy! Lost next turn ⚔️';
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                break;
+            
+            case 62: // Breaking the Curse
+                if (stats.hasClue) { 
+                    if (stats.angel) {
+                        message = 'Your pure heart and ancient knowledge reveals the crown! 📜👑😇';
+                        stats.hasCrown = true;
+                    } else if (stats.devil) {
+                        // Evil karma gets crown but sent to start
+                        GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                        message = 'Dark magic reveals the crown, but at a price! Back to start! 📜👑😈';
+                    }
+                    
+                    // Show crown animation
                     const crownAnimation = document.createElement('div');
                     crownAnimation.className = 'map-animation';
                     crownAnimation.innerHTML = '👑';
                     targetCell.appendChild(crownAnimation);
                     setTimeout(() => crownAnimation.remove(), 1000);
-                } else if (inventory.getGold(playerIndex) >= 5000 && 
-                        confirm(crownInfo + 'Pay 5,000 Gold to lift the curse? 👑')) {
-                    inventory.modifyGold(playerIndex, -5000);
-                    stats.hasCrown = true;
-                    message = 'Paid to lift the curse! Crown is yours! 👑';
-                } else {
-                    stats.cursed = true;
-                    message = 'The crown remains cursed! Beware... 💀';
-                }
-                break;
-
-            case 60: // Final Trial
-                const powerStats = `Power Stats:\n` +
-                                `Strength: ${stats.strength}\n` +
-                                `Magic: ${stats.magic || 0}\n` +
-                                `Allies: ${(stats.hasAlly ? 1 : 0) + (stats.titanAlly ? 1 : 0)}\n` +
-                                `Artifacts: ${stats.hasMysticStaff ? 'Staff' : 'None'}\n\n`;
-
-                const finalPower = stats.strength + (stats.magic || 0) + 
-                                (stats.honor || 0) + (stats.wisdom || 0) +
-                                (stats.hasAlly ? 2 : 0) + 
-                                (stats.titanAlly ? 3 : 0) +
-                                (stats.hasMysticStaff ? 2 : 0) -
-                                (stats.cursed ? 4 : 0);
-
-                if (finalPower >= 15) {
-                    inventory.modifyGold(playerIndex, 5000);
-                    message = '🎉 VICTORY! You are worthy! +5,000 Gold';
-                    showGoldAnimation(targetCell, 5000);
-                    setTimeout(() => {
-                        alert(`Congratulations Player ${playerIndex + 1}!\n` +
-                            `Total Gold: ${inventory.getGold(playerIndex)}\n` +
-                            `Final Power: ${finalPower}`);
-                    }, 1000);
-                } else {
-                    playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 10);
-                    message = `Trial failed! Power(${finalPower}/15) Not yet worthy! ⚔️`;
-                }
-                break;
-
-            case 61: // Ultimate Boss Battle
-                const totalPower = stats.strength + (stats.magic || 0) + 
-                                (stats.honor || 0) + (stats.wisdom || 0) +
-                                (stats.hasAlly ? 2 : 0) + 
-                                (stats.titanAlly ? 3 : 0) +
-                                (stats.hasMysticStaff ? 2 : 0) +
-                                (stats.luck || 0) -
-                                (stats.cursed ? 4 : 0) +
-                                (stats.karma > 0 ? 2 : 0);
-
-                const bossBattleInfo = `Battle Status:\nTotal Power: ${totalPower}\nRequired: 20\n\n`;
-
-                if (confirm(bossBattleInfo + 'Face the Ultimate Boss? ⚔️')) {
-                    const battleRoll = rollDice() + rollDice();
-                    const finalPower = totalPower + battleRoll;
                     
-                    if (finalPower >= 20) {
-                        stats.legendaryVictor = true;
-                        stats.strength += 3;
-                        stats.magic = (stats.magic || 0) + 3;
-                        message = `Epic victory! Power(${finalPower}/20) Legendary status achieved! 🏆`;
-                    } else {
-                        playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 10);
-                        stats.health = Math.max(1, stats.health - 2);
-                        message = `Defeated! Power(${finalPower}/20) Retreat and grow stronger... ⚔️`;
-                    }
+                    // Remove clue after use
+                    stats.hasClue = false;
+                    params.inventory.markItemAsUsed(playerIndex, 'clue');
+                    params.inventory.markItemAsUsed(playerIndex, 'angel');
                 } else {
-                    playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 5);
-                    message = 'Retreated from the ultimate battle 🏃';
+                    message = 'The curse remains unbroken... Need a clue to proceed 📜❌';
                 }
-                break;
-
-            case 62: // Breaking the Curse
-                if (stats.legendaryVictor) {
-                    stats.cursed = false;
-                    stats.isCrowned = true;
-                    inventory.modifyGold(playerIndex, 10000);
-                    message = '👑 The curse is broken! Crowned as the new ruler! +10,000 Gold';
-                    showGoldAnimation(targetCell, 10000);
-                    
-                    const coronationAnimation = document.createElement('div');
-                    coronationAnimation.className = 'map-animation';
-                    coronationAnimation.innerHTML = '👑';
-                    coronationAnimation.style.fontSize = '32px';
-                    targetCell.appendChild(coronationAnimation);
-                    setTimeout(() => coronationAnimation.remove(), 1500);
-                    
-                    setTimeout(() => {
-                        alert('The kingdom celebrates your coronation! 👑');
-                    }, 1000);
-                } else {
-                    message = 'Must prove yourself in ultimate battle first! ⚔️';
-                    playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 1);
-                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 63: // Ruler's Choice
-                if (stats.isCrowned) {
-                    const rulerChoice = prompt(
-                        'How will you rule the kingdom? 👑\n\n' +
-                        'WISDOM: Rule with knowledge\n' +
-                        'POWER: Rule with strength\n' +
-                        'BALANCE: Rule with harmony\n\n' +
-                        'Type your choice:'
-                    )?.toUpperCase();
-
-                    switch(rulerChoice) {
-                        case 'WISDOM':
-                            stats.ending = 'wise';
-                            message = 'You become a wise and beloved ruler! 📚👑';
-                            break;
-                        case 'POWER':
-                            stats.ending = 'powerful';
-                            message = 'You become a powerful but feared ruler! ⚔️👑';
-                            break;
-                        case 'BALANCE':
-                            stats.ending = 'balanced';
-                            message = 'You rule with perfect balance! ☯️👑';
-                            break;
-                        default:
-                            stats.ending = 'uncertain';
-                            message = 'Your uncertain rule leads to challenges... 👑❓';
-                    }
+                if (stats.hasHouse) {
+                    // Player with house is considered established and trustworthy
+                    message = 'Your established status as a homeowner earns respect! Safe passage granted 🏠✨';
                 } else {
-                    message = 'You must be crowned to make this choice! 👑❌';
-                    playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - 1);
+                    // Move player backward randomly (1-6 steps)
+                    const backSteps = Math.floor(Math.random() * 6) + 1;
+                    params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - backSteps);
+                    message = `Lack of status betrays you! Moved back ${backSteps} steps! 👑❌`;
+                    
+                    // Move player token
+                    const newPos = params.playerPositions[playerIndex];
+                    const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(newPos/8) + 1}) td:nth-child(${newPos%8 + 1})`);
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token && newCell) {
+                        newCell.appendChild(token);
+                        token.style.top = '50%';
+                        token.style.left = '50%';
+                    }
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 64: // Victory Celebration
+                // Calculate final stats
                 const finalStats = {
-                    gold: inventory.getGold(playerIndex),
-                    strength: stats.strength,
-                    magic: stats.magic || 0,
-                    karma: stats.karma || 0,
-                    ending: stats.ending || 'unknown'
+                    gold: params.inventory.getGold(playerIndex),
+                    strength: stats.strength || 0,
+                    magic: stats.magic || 0
                 };
-
-                message = '🎉 Congratulations! Adventure completed!';
-
+            
+                // Determine ending based on stats
+                let ending;
+                if (finalStats.magic > finalStats.strength) {
+                    ending = 'wise';
+                } else if (finalStats.strength > finalStats.magic) {
+                    ending = 'powerful';
+                } else if (stats.angel) {
+                    ending = 'balanced';
+                } else if (stats.devil) {
+                    ending = 'uncertain';
+                } else {
+                    ending = 'unknown';
+                }
+            
+                // Store ending type
+                stats.ending = ending;
+            
+                // Show victory message and animation
+                message = '🎉 Victory! Your adventure is complete!';
+                const celebrationAnimation = document.createElement('div');
+                celebrationAnimation.className = 'map-animation';
+                celebrationAnimation.innerHTML = '🏆';
+                celebrationAnimation.style.fontSize = '32px';
+                targetCell.appendChild(celebrationAnimation);
+                setTimeout(() => celebrationAnimation.remove(), 2000);
+            
+                // Show ending dialog after animation
                 setTimeout(() => {
                     const endingMessages = {
                         wise: '📚 Your wisdom brings a golden age of peace and prosperity!',
@@ -239,14 +273,19 @@
                         uncertain: '❓ Your legacy remains to be written...',
                         unknown: '📜 Your story fades into legend...'
                     };
-
-                    alert(`🏆 Adventure Complete!\n\n` +
-                        `Final Gold: ${finalStats.gold} 💰\n` +
+            
+                    alert(
+                        `🏆 Adventure Complete!\n\n` +
+                        `Final Stats:\n` +
+                        `Gold: ${finalStats.gold} 💰\n` +
                         `Strength: ${finalStats.strength} 💪\n` +
-                        `Magic: ${finalStats.magic} ✨\n` +
-                        `Karma: ${finalStats.karma} ${finalStats.karma > 0 ? '😇' : '😈'}\n\n` +
-                        `${endingMessages[finalStats.ending]}`);
+                        `Magic: ${finalStats.magic} ✨\n\n` +
+                        `${endingMessages[ending]}`
+                    );
                 }, 1000);
+            
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             default:

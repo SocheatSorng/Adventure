@@ -263,7 +263,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     (choice) => {
                         if (choice === '1' && inventory.getGold(playerIndex) >= 300) {
                             inventory.modifyGold(playerIndex, -300);
-                            stats.health += 2;
+                            stats.strength += 2;
                             message = 'You bought powerful armor! +2 💪';
                         } else if (choice === '1') {
                             message = 'Not enough gold to buy the armor! 💰❌';
@@ -397,7 +397,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 GF.createChoiceUI(
                     'The 💍 grants one wish!\n',
                     [
-                        '+3 ❤️',
                         '+3 💪',
                         '+3 🔮',
                         '+300 💰'
@@ -405,18 +404,14 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     (choice) => {
                         switch(choice) {
                             case '1':
-                                stats.health += 3;
-                                message = 'Your wish for health was granted! +3 ❤️';
-                                break;
-                            case '2':
                                 stats.strength += 3;
                                 message = 'Your wish for strength was granted! +3 💪';
                                 break;
-                            case '3':
+                            case '2':
                                 stats.magic += 3;
                                 message = 'Your wish for magic was granted! +3 🔮';
                                 break;
-                            case '4':
+                            case '3':
                                 inventory.modifyGold(playerIndex, 300);
                                 message = 'Your wish for gold was granted! +300 💰';
                                 showGoldAnimation(targetCell, 300);
@@ -635,15 +630,6 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     }
                 }
                 break;
-        }
-    }
-
-    // Change the healthModifyingGrids array to remove grid 21 since it no longer affects health
-    const healthModifyingGrids = [4, 19];  // Removed 21 from the array
-    if (healthModifyingGrids.includes(gridNumber)) {
-        const healthCheck = localCheckHealth();
-        if (healthCheck) {
-            message = healthCheck;
         }
     }
 

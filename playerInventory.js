@@ -15,6 +15,15 @@ class PlayerInventory {
             alignment: '',
             honor: 0,
             wisdom: 0,
+            angel: false,
+            devil: false,
+            hasClover: false,
+            hasClue: false,
+            hasHouse: false,
+            hasStaff: false,
+            metRoyal: false,
+            hasCrown: false,
+            hasTitan: false,
             itemsUsed: new Set() // Add tracking of used items
         }));
     }
@@ -42,6 +51,8 @@ class PlayerInventory {
         if (stats.devil) statDisplay.push('😈');    // Add devil emoji when player has devil
         if (stats.hasStaff) statDisplay.push('🪄');  // Add wand emoji when player has wand
         if (stats.metRoyal) statDisplay.push('🏰'); 
+        if (stats.hasCrown) statDisplay.push('👑');
+        if (stats.hasTitan) statDisplay.push('🧌');
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');
