@@ -30,7 +30,7 @@
                     (choice) => {
                         switch (choice) {
                             case '1': // DRINK
-                                params.inventory.modifyStat(playerIndex, 'luck', 1);
+                                stats.hasClover = true;
                                 message = 'Drank the luck potion! Gained luck 🍀';
                                 break;
                             case '2': // SELL
@@ -267,10 +267,19 @@
                 break;
 
             case 41: // Secret treasure room
-                const treasureBonus = stats.hasClue ? 500 : 0;
-                params.inventory.modifyGold(playerIndex, 1000 + treasureBonus);
-                message = `Found a secret treasure room! +${1000 + treasureBonus} 💰`;
-                GF.showGoldAnimation(targetCell, 1000 + treasureBonus);
+                if (stats.hasClover) {
+                    // Found secret treasure room with lucky clover
+                    params.inventory.modifyGold(playerIndex, 1500);
+                    stats.hasClover = false; // Use up the clover
+                    params.inventory.markItemAsUsed(playerIndex, 'clover');
+                    message = 'Your 🍀 led you to a secret treasure room! +1,500 💰';
+                    GF.showGoldAnimation(targetCell, 1500);
+                } else {
+                    message = 'Nothing interesting here...';
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                params.updateGoldDisplay(playerIndex);
                 break;
 
             case 42: // Clue to final goal
@@ -296,12 +305,13 @@
                                 params.inventory.modifyGold(playerIndex, 1000);
                                 message = 'Accepted dark deal! +1,000 💰, +😈';
                                 stats.devil = true;
+                                stats.angel = false;
                                 GF.showGoldAnimation(targetCell, 1000);
                                 break;
                             default: // REFUSE
-                                stats.karma = (stats.karma || 0) + 1;
                                 message = 'Refused the Crime Lord. +😇';
                                 stats.angel = true;
+                                stats.devil = false;
                                 break;
                         }
                         GF.showEventMessage(message);
@@ -313,90 +323,91 @@
 
             case 44: // Wizard's teleport
                 if (stats.magic >= 3) {
-                    const oldPos = params.playerPositions[playerIndex];
-                    let stepsForward = 1;  // Default 1 step for having >= 3 magic
+                    setTimeout(() => {
+                        params.movePlayer(playerIndex, 1);
+                        GF.showEventMessage('Used 🔮 to move 1 step forward!');
+                    }, 1000);
                     
                     if (stats.hasWand) {
                         // With wand: moves based on magic amount (max 10)
-                        stepsForward = Math.min(stats.magic, 10);
-                        message = `🪄 amplifies your magic! Moving ${stepsForward} steps forward! 🪄✨`;
-                        stats.hasWand = false;
-                    } else {
-                        message = `Used magic to move 1 step forward! ✨`;
+                        const stepsForward = Math.min(stats.magic, 10);
+                        setTimeout(() => {
+                            params.movePlayer(playerIndex, stepsForward);
+                            GF.showEventMessage(`🪄 amplifies your magic! Moving ${stepsForward} steps forward!`);
+                        }, 1000);
                     }
-            
-                    const newPos = Math.min(oldPos + stepsForward, params.TOTAL_CELLS - 1);
-                    
-                    // Update cell occupancy and move token
-                    params.cellOccupancy[oldPos]--;
-            
-                    const targetRow = Math.floor(newPos / 8);
-                    const targetCol = newPos % 8;
-                    const newCell = document.querySelector(`#gameTable tr:nth-child(${targetRow + 1}) td:nth-child(${targetCol + 1})`);
-                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-            
-                    if (token && newCell) {
-                        newCell.appendChild(token);
-                        token.style.top = '50%';
-                        token.style.left = '50%';
-                        params.cellOccupancy[newPos]++;
-                    }
-            
-                    params.playerPositions[playerIndex] = newPos;
                 } else {
-                    message = 'Not enough 🔮 to cast teleport! Need at least 3 🔮❌';
+                    message = 'Not enough magic to cast teleport! Need at least 3 🔮❌';
                 }
                 GF.showEventMessage(message);
                 break;
 
             case 45: // Royal Feast
-                stats.health++;
-                if (stats.angel > 0) {
-                    message = 'Attended a Royal Feast! Health +3';
-                    stats.health += 3;
-                } else if (stats.devil > 0) {
-                    message = 'Attended a Royal Feast! Health -3';
-                    stats.health -= 3;
+                if (stats.angel) {
+                    message = 'The nobles welcome you!';
+                } else if (stats.devil) {
+                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    message = 'The nobles recognize your dark dealings! Back to start';
+                } else {
+                    message = 'You were not invited to the Royal Feast!';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
-            case 46: // Queen's Secret Mission
-                GF.createChoiceUI(
-                    'The Queen offers you a secret mission! 👑',
-                    [
-                        'ACCEPT - Risk health for 2,500 Gold',
-                        'DECLINE - Keep your health'
-                    ],
-                    (choice) => {
-                        switch (choice) {
-                            case '1': // ACCEPT
-                                const missionRoll = params.rollDice() + (stats.luck || 0);
-                                if (missionRoll >= 4) {
-                                    params.inventory.modifyGold(playerIndex, 2500);
-                                    message = 'Mission successful! Earned 2,500 Gold 🎯';
-                                    GF.showGoldAnimation(targetCell, 2500);
-                                } else {
-                                    stats.health--;
-                                    message = localCheckHealth() || 'Mission failed! Lost 1 health ❌';
-                                }
-                                break;
-                            default: // DECLINE
-                                message = 'Declined the Queen\'s mission 🏃';
-                                break;
+                case 46: // Queen's Secret Mission
+                if (stats.angel) {
+                    // Angel karma: Auto-success and bonus gold
+                    params.inventory.modifyGold(playerIndex, 3000);
+                    message = 'The Queen trusts your pure heart! Mission success! +3,000 💰';
+                    GF.showGoldAnimation(targetCell, 3000);
+                } else if (stats.devil) {
+                    // Devil karma: Guards catch you
+                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    message = 'The Queen\'s guards recognize your evil deeds! Back to start 😈';
+                } else {
+                    // No karma: Normal mission choice
+                    GF.createChoiceUI(
+                        'The Queen offers you a secret mission!',
+                        [
+                            'ACCEPT - Risk a ❤️ for 2,500 Gold',
+                            'DECLINE - Keep your health'
+                        ],
+                        (choice) => {
+                            switch (choice) {
+                                case '1': // ACCEPT
+                                    const missionRoll = params.rollDice() + (stats.luck || 0);
+                                    if (missionRoll >= 4) {
+                                        params.inventory.modifyGold(playerIndex, 2500);
+                                        message = 'Mission successful! Earned 2,500 💰';
+                                        GF.showGoldAnimation(targetCell, 2500);
+                                    } else {
+                                        stats.health--;
+                                        message = localCheckHealth() || 'Mission failed! Lost a ❤️❌';
+                                    }
+                                    break;
+                                default: // DECLINE
+                                    message = 'Declined the Queen\'s mission';
+                                    break;
+                            }
+                            GF.showEventMessage(message);
+                            params.updatePlayerStats(playerIndex);
+                            params.updateGoldDisplay(playerIndex);
                         }
-                        GF.showEventMessage(message);
-                        params.updatePlayerStats(playerIndex);
-                        params.updateGoldDisplay(playerIndex);
-                    }
-                )
+                    );
+                    return; // Exit early due to async nature
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                params.updateGoldDisplay(playerIndex);
                 break;
 
             case 47: // Secret Society
                 GF.createChoiceUI(
-                    'You found a secret society! 🌌',
+                    'You found a secret society!',
                     [
-                        'JOIN - Light Society (+2 Magic)',
-                        'JOIN - Dark Society (+2 Strength)',
+                        'JOIN - Light Society (+2 🔮)',
+                        'JOIN - Dark Society (+2 💪)',
                         'DECLINE - Stay neutral'
                     ],
                     (choice) => {
@@ -404,16 +415,15 @@
                             case '1': // JOIN LIGHT
                                 stats.alignment = 'light';
                                 stats.magic = (stats.magic || 0) + 2;
-                                message = 'Joined the Light Society! Magic +2 ✨';
+                                message = 'Joined the Light Society! Magic +2 🔮';
                                 break;
                             case '2': // JOIN DARK
                                 stats.alignment = 'dark';
                                 stats.strength += 2;
-                                stats.magic = Math.max(0, (stats.magic || 0) - 1); // Reduce magic when choosing strength
-                                message = 'Joined the Dark Society! Strength +2, Magic -1 ⚔️';
+                                message = 'Joined the Dark Society! Strength +2 💪';
                                 break;
                             default: // DECLINE
-                                message = 'Declined to join any society 🚶';
+                                message = 'Declined to join any society';
                                 break;
                         }
                         GF.showEventMessage(message);
