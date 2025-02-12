@@ -16,6 +16,7 @@
             case 57: // Sacred Chamber
             if (stats.devil) {
                 // Evil karma: move backward to grid 55 (index 54)
+                stats.devil = false;
                 params.playerPositions[playerIndex] = 54;  // Move to grid 55
                 
                 // Move token to grid 55
@@ -29,19 +30,21 @@
                         token.style.top = '50%';
                         token.style.left = '50%';
                         walkingAnimation.remove();
-                        message = 'Dark aura sends you to the Mysterious Portal! 😈✨';
+                        message = 'Dark aura sends you to the Mysterious Portal!';
                         GF.showEventMessage(message);
                         }, 1000);
                     }
                 params.inventory.markItemAsUsed(playerIndex, 'devil');
                 } else if (stats.angel) {
                     // Good karma: receive random item
+                    stats.angel = false;
                     const possibleItems = [
                         { name: 'lucky clover', stat: 'hasClover', emoji: '🍀' },
                         { name: 'map', stat: 'hasMap', emoji: '🗺️' },
                         { name: 'staff', stat: 'hasStaff', emoji: '🪄' },
                         { name: 'ally', stat: 'hasAlly', emoji: '🤝' },
-                        { name: 'clue', stat: 'hasClue', emoji: '📜' }
+                        { name: 'clue', stat: 'hasClue', emoji: '📜' },
+                        { name: 'potion', stat: 'hasPotion', emoji: '🧪' }
                     ];
 
                     // Filter out items player already has
@@ -54,17 +57,12 @@
                         message = `Sacred blessing! Received ${randomItem.name}! ${randomItem.emoji}`;
 
                         // Show item animation
-                        const itemAnimation = document.createElement('div');
-                        itemAnimation.className = 'map-animation';
-                        itemAnimation.innerHTML = randomItem.emoji;
-                        targetCell.appendChild(itemAnimation);
-                        setTimeout(() => itemAnimation.remove(), 1000);
-                        params.inventory.markItemAsUsed(playerIndex, 'angel');
+                        GF.showItemAnimation(targetCell, randomItem.emoji);
                     } else {
-                        message = 'Sacred chamber shines with approval! 😇✨';
+                        message = 'Sacred chamber shines with approval!';
                     }
                 } else {
-                    message = 'The sacred chamber remains silent... 🏛️';
+                    message = 'The sacred chamber remains silent...';
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
@@ -72,10 +70,10 @@
 
             case 58: // Titan Battle
                 if (stats.strength >= 10) {
-                    message = 'Your incredible strength defeats the Titan! 💪🏆';
+                    message = 'Your incredible strength defeats the Titan!';
                     if(stats.hasAlly)
                         stats.titanAlly = true; // Titan becomes ally
-                    stats.strength -= 10;
+                    stats.strength -= 5;
 
                 } else if (stats.hasAlly) {
                     GF.createChoiceUI(
@@ -130,12 +128,7 @@
                     GF.showGoldAnimation(targetCell, 10000);
                     
                     // Show crown animation
-                    const crownAnimation = document.createElement('div');
-                    crownAnimation.className = 'map-animation';
-                    crownAnimation.innerHTML = '👑';
-                    crownAnimation.style.fontSize = '32px';
-                    targetCell.appendChild(crownAnimation);
-                    setTimeout(() => crownAnimation.remove(), 1500);
+                    GF.showItemAnimation(targetCell, '👑');
                     
                     setTimeout(() => {
                         alert(`Congratulations Player ${playerIndex + 1}!\nYou have won the game with the 👑! `);
@@ -158,12 +151,17 @@
                         token.style.top = '50%';
                         token.style.left = '50%';
                     }
-                    message = 'Your staff protected you! Teleported to the Mysterious Portal 🪄✨';
+                    message = 'Your 🪄 protected you! Teleported to the Mysterious Portal!';
                     params.inventory.markItemAsUsed(playerIndex, 'staff');
+                } else if (stats.hasMap) {
+                    // Move player forward 1 step
+                    params.playerPositions[playerIndex] = Math.min(params.TOTAL_CELLS - 1, params.playerPositions[playerIndex] + 1);
+                    message = `Your 🗺️ guides you! Moved forward 1 step!`;
+                    params.inventory.markItemAsUsed(playerIndex, 'map');
                 } else {
                     // Send player back to start
                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
-                    message = 'Earthquake throws you back to the beginning! 🌋';
+                    message = 'Earthquake throws you back to the beginning!';
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
@@ -172,7 +170,7 @@
             case 61: // Ultimate Boss Battle
                 // Automatically lose a turn
                 stats.skipNextTurn = true;
-                message = 'The Ultimate Boss drains your energy! Lost next turn ⚔️';
+                message = 'The Ultimate Boss drains your energy! Lost next turn!';
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
                 break;
@@ -180,25 +178,21 @@
             case 62: // Breaking the Curse
                 if (stats.hasClue) { 
                     if (stats.angel) {
-                        message = 'Your pure heart and ancient knowledge reveals the crown! 📜👑😇';
+                        message = 'Your pure heart and ancient knowledge reveals the crown!';
                         stats.hasCrown = true;
+                        stats.hasClue = false;
+                        stats.angel = false;
+                        params.inventory.markItemAsUsed(playerIndex, 'angel');
+                        params.inventory.markItemAsUsed(playerIndex, 'clue');
+                        GF.showItemAnimation(targetCell, '👑');
                     } else if (stats.devil) {
                         // Evil karma gets crown but sent to start
                         GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
-                        message = 'Dark magic reveals the crown, but at a price! Back to start! 📜👑😈';
+                        message = 'Dark magic reveals the crown, but at a price! Back to start!';
+                        stats.devil = false;
                     }
                     
-                    // Show crown animation
-                    const crownAnimation = document.createElement('div');
-                    crownAnimation.className = 'map-animation';
-                    crownAnimation.innerHTML = '👑';
-                    targetCell.appendChild(crownAnimation);
-                    setTimeout(() => crownAnimation.remove(), 1000);
-                    
-                    // Remove clue after use
-                    stats.hasClue = false;
-                    params.inventory.markItemAsUsed(playerIndex, 'clue');
-                    params.inventory.markItemAsUsed(playerIndex, 'angel');
+                    message = 'You have the clue, but you don\'t know how to break the curse yet...';
                 } else {
                     message = 'The curse remains unbroken... Need a clue to proceed 📜❌';
                 }
@@ -210,7 +204,13 @@
                 if (stats.hasHouse) {
                     // Player with house is considered established and trustworthy
                     message = 'Your established status as a homeowner earns respect! Safe passage granted 🏠✨';
-                } else {
+                } else if (stats.hasTitan){
+                    // Player with Titan ally is considered powerful
+                    message = 'Your powerful Titan ally commands respect! Safe passage granted 🧌✨';
+                    stats.hasTitan = false;
+                    params.inventory.markItemAsUsed(playerIndex, 'titan');
+                }
+                    else {
                     // Move player backward randomly (1-6 steps)
                     const backSteps = Math.floor(Math.random() * 6) + 1;
                     params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - backSteps);
