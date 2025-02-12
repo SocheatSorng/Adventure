@@ -130,23 +130,25 @@ td img[src^="data:image"] {
     text-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
 
-.gold-animation {
+.gold-animation,
+.lost-gold-animation {
     position: fixed;
-    color: #FFD700;
-    font-weight: bold;
-    pointer-events: none;
+    transform: translate(-50%, -50%);
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
     z-index: 1000;
-    animation: floatGold 1.5s ease-out forwards;
-    text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+    animation: goldFade 1s ease-in-out;
+}
+
+.gold-animation {
+    background-color: gold;
+    color: black;
 }
 
 .lost-gold-animation {
-    position: fixed;
-    color: #FF4136;
-    font-weight: bold;
-    pointer-events: none;
-    animation: floatGold 1.5s ease-out forwards;
-    text-shadow: 0 0 4px rgba(255, 65, 54, 0.5);
+    background-color: #FF4136;
+    color: white;
 }
 
 @keyframes floatGold {

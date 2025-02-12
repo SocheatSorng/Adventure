@@ -63,6 +63,8 @@ window.GameFunctions = {
         animation.textContent = `-${amount} 🪙`;
         animation.style.left = `${rect.left + rect.width/2}px`;
         animation.style.top = `${rect.top + rect.height/2}px`;
+        animation.style.backgroundColor = '#FF4136';  // Red background
+        animation.style.color = 'white';             // White text
         document.body.appendChild(animation);
         animation.addEventListener('animationend', () => animation.remove());
     },

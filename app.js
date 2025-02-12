@@ -273,17 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
         inventory.updateStats(playerIndex, wrapper);
     }
 
-    function showGoldAnimation(cell, amount) {
-        const rect = cell.getBoundingClientRect();
-        const animation = document.createElement('div');
-        animation.className = 'gold-animation';
-        animation.textContent = `+${amount} 🪙`;
-        animation.style.left = `${rect.left + rect.width/2}px`;
-        animation.style.top = `${rect.top + rect.height/2}px`;
-        document.body.appendChild(animation);
-        animation.addEventListener('animationend', () => animation.remove());
-    }
-
     function showEventMessage(message) {
         const eventDisplay = document.getElementById('eventDisplay');
         eventDisplay.textContent = message || 'Roll the dice to move!';  // Default message when empty
@@ -351,18 +340,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 // Show event message only for final position
                 if (pos === newPos) {
+                    const GF = window.GameFunctions; // Add this line to get reference to GameFunctions
+
+                    // When calling handleColumnEvent, update the parameter object:
                     handleColumnEvent(playerIndex, pos, targetCell, {  
-                        inventory,         // Pass the inventory object instead of playerStats/playerGold
+                        inventory,
                         playerPositions,
                         showEventMessage,
                         updatePlayerStats,
-                        updateGoldDisplay: (idx) => updateGoldDisplay(idx),  // Wrap the function
-                        showGoldAnimation,
+                        updateGoldDisplay: (idx) => updateGoldDisplay(idx),
+                        showGoldAnimation: GF.showGoldAnimation,        // Use GF reference
+                        showLostGoldAnimation: GF.showLostGoldAnimation, // Use GF reference
                         rollDice,
                         cellOccupancy,
                         TOTAL_CELLS,
                         movePlayer,
-                        currentPlayer  // Add currentPlayer for turn handling
+                        currentPlayer
                     });
                 }
             }
