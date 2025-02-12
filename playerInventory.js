@@ -3,7 +3,7 @@ class PlayerInventory {
         this.playerCount = Number(playerCount);
         this.playerGold = new Array(this.playerCount).fill(0);
         this.playerStats = Array(this.playerCount).fill().map(() => ({
-            health: 0,
+            health: 1,
             strength: 0,
             potions: 0,
             hasMap: false,
@@ -40,7 +40,8 @@ class PlayerInventory {
         if (stats.hasClue) statDisplay.push('📜');  // Add clue emoji when player has a clue
         if (stats.hasHouse) statDisplay.push('🏠'); // Add house emoji when player has a house
         if (stats.devil) statDisplay.push('😈');    // Add devil emoji when player has devil
-        if (stats.hasWand) statDisplay.push('🪄');  // Add wand emoji when player has wand
+        if (stats.hasStaff) statDisplay.push('🪄');  // Add wand emoji when player has wand
+        if (stats.metRoyal) statDisplay.push('🏰'); 
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');

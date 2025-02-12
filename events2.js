@@ -328,7 +328,7 @@
                         GF.showEventMessage('Used 🔮 to move 1 step forward!');
                     }, 1000);
                     
-                    if (stats.hasWand) {
+                    if (stats.hasStaff) {
                         // With wand: moves based on magic amount (max 10)
                         const stepsForward = Math.min(stats.magic, 10);
                         setTimeout(() => {
@@ -353,6 +353,7 @@
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
+                stats.metRoyal = true;
                 break;
 
                 case 46: // Queen's Secret Mission
@@ -400,6 +401,7 @@
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
                 params.updateGoldDisplay(playerIndex);
+                stats.metRoyal = true;
                 break;
 
             case 47: // Secret Society
@@ -447,34 +449,23 @@
                 break;
 
             case 49: // Dark Warrior
-                const darkWarriorInfo = `Current Stats:\nStrength: ${stats.strength}\nHealth: ${stats.health}\n\n`;
-                const warriorChoice = confirm(
-                    darkWarriorInfo +
-                    'Dark Warrior challenges you!\nRequired Strength: 7\nAccept duel? ⚔️'
-                );
-
-                if (warriorChoice) {
-                    const duelRoll = params.rollDice();
-                    const totalPower = duelRoll + (stats.strength || 0);
-                    if (totalPower >= 7) {
-                        stats.honor = (stats.honor || 0) + 1;
-                        stats.strength += 1;
-                        message = 'Victory! Honor +1, Strength +1 ⚔️👑';
-                    } else {
-                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 3);
-                        message = 'Lost the duel! Retreated 3 spaces 🏃';
-                    }
-                } else {
-                    message = 'Declined the duel with the Dark Warrior 🛡️';
-                }
+                // Store initial magic for message and drain all magic immediately
+                const initialMagic = stats.magic || 0;
+                stats.magic = 0;
+                
+                message = `The Dark Warrior drains all your magic! Lost ${initialMagic} 🔮❌`;
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 50: // Haunted Castle
-                const ghostRoll = params.rollDice() + (stats.magic || 0);
-                const requiredPower = 5;
-                const currentPower = ghostRoll;
-
-                if (currentPower >= requiredPower) {
+                if (stats.hasClover) {
+                    // Lucky clover protects from the curse
+                    stats.hasClover = false; // Use up the clover
+                    params.inventory.markItemAsUsed(playerIndex, 'clover');
+                    message = 'Your 🍀 protected you from the castle\'s curse!';
+                    
+                    // Reveal secrets if has clue
                     if (stats.hasClue) {
                         stats.hasSecrets = true;
                         message = 'The ghosts reveal ancient secrets about the Golden Crown! 👻📜';
@@ -483,58 +474,122 @@
                         secretAnimation.innerHTML = '📜';
                         targetCell.appendChild(secretAnimation);
                         setTimeout(() => secretAnimation.remove(), 1000);
-                    } else {
-                        message = `Survived the haunted castle! (Roll: ${ghostRoll}, Magic: ${stats.magic || 0}, Total: ${currentPower}/${requiredPower}) 👻`;
                     }
                 } else {
-                    stats.health--;
-                    stats.cursed = true;
-                    const lostItems = [];
-                    if (stats.potions > 0) {
-                        lostItems.push(`${stats.potions} potions`);
-                        stats.potions = 0;
-                    }
-                    if (stats.magic > 0) {
-                        lostItems.push('1 magic');
-                        stats.magic = Math.max(0, stats.magic - 1);
-                    }
-                    const lostMessage = lostItems.length > 0 ? ` Lost ${lostItems.join(' and ')}!` : '';
-                    message = localCheckHealth() || `The ghosts cursed you! Roll: ${ghostRoll}, Magic: ${stats.magic || 0}, Total: ${currentPower}/${requiredPower}. Lost 1 health and became cursed!${lostMessage} 👻💀`;
+                    // Lose everything without clover protection
+                    const oldGold = params.inventory.getGold(playerIndex);
+                    params.inventory.modifyGold(playerIndex, -oldGold);
+                    stats.health = 1;
+                    stats.strength = 0;
+                    stats.magic = 0;
+                    stats.hasMap = false;
+                    stats.angel = false;
+                    stats.hasAlly = false;
+                    stats.hasClover = false;  
+                    stats.hasClue = false;
+                    stats.hasHouse = false;
+                    stats.devil = false;
+                    stats.hasStaff = false;
+            
+                    message = 'The castle\'s curse took everything from you!';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                params.updateGoldDisplay(playerIndex);
                 break;
 
             case 51: // Dungeon Trapdoor
+                if (stats.hasClue) {
+                    // Player with clue knows how to escape safely
+                    message = 'Your 📜 helped you escape the trapdoor!';
+                    params.inventory.markItemAsUsed(playerIndex, 'clue');
+                } else {
+                    // Player without clue loses a turn
+                    stats.skipNextTurn = true;
+                    message = 'You fell into the trapdoor! Lost next turn to climb out!';
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                break;
+
+            case 52: // Mystic Staff
+                const staffAnimation = document.createElement('div');
+                staffAnimation.className = 'map-animation';
+                staffAnimation.innerHTML = '🪄';
+                targetCell.appendChild(staffAnimation);
+                setTimeout(() => staffAnimation.remove(), 1000);
+
+                stats.hasStaff = true;
+                message = 'Found the Mystic Staff! +🪄';
+                GF.showEventMessage(message);
+                break;
+
+            case 53: // Demon's Lord
+                if (stats.strength >= 5) {
+                    message = 'Your 💪 protected you from demon lord\'s curse!';
+                    stats.strength -= 5;
+                } else {
+                    // Lose everything without clover protection
+                    const oldGold = params.inventory.getGold(playerIndex);
+                    params.inventory.modifyGold(playerIndex, -oldGold);
+                    stats.strength = 0;
+                    stats.magic = 0;
+            
+                    message = 'You fought the demon lord but were exhausted! Lost all 💪 and 🔮!';
+                }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                
+                break;
+
+            case 54: // Rival Chase
+                // Determine what item to steal based on player's inventory
+                let itemToSteal = '';
+                if (stats.hasMap) itemToSteal = 'map';
+                else if (stats.hasStaff) itemToSteal = 'staff';
+                else if (stats.hasClover) itemToSteal = 'lucky clover';
+                else if (stats.hasClue) itemToSteal = 'clue';
+                else if (stats.hasAlly) itemToSteal = 'ally';
+                else {
+                    message = 'The rival found nothing worth stealing!';
+                    GF.showEventMessage(message);
+                    break;
+                }
+            
                 GF.createChoiceUI(
-                    'You fell into a dungeon! 🕳️',
+                    `Rival stole your ${itemToSteal}!\n`,
                     [
-                        'EXPLORE - Risk health for treasure',
-                        'HIDE - Stay safe (Luck helps)',
-                        'CALL - Get help (Move back)'
+                        'BRIBE - 300 💰 to get it back',
+                        'RUN - Lose the item'
                     ],
                     (choice) => {
                         switch (choice) {
-                            case '1': // EXPLORE
-                                const dungeonRoll = params.rollDice() + (stats.luck || 0);
-                                if (dungeonRoll >= 4) {
-                                    params.inventory.modifyGold(playerIndex, 800);
-                                    message = 'Found hidden treasure! +800 Gold 💰';
-                                    GF.showGoldAnimation(targetCell, 800);
+                            case '1': // BRIBE
+                                if (params.inventory.getGold(playerIndex) >= 300) {
+                                    params.inventory.modifyGold(playerIndex, -300);
+                                    message = `Paid 300 💰 to get your ${itemToSteal} back!`;
                                 } else {
-                                    stats.health--;
-                                    message = localCheckHealth() || 'Encountered enemies! Lost 1 health ⚔️';
+                                    // Remove stolen item
+                                    switch (itemToSteal) {
+                                        case 'map': stats.hasMap = false; break;
+                                        case 'staff': stats.hasStaff = false; break;
+                                        case 'lucky clover': stats.hasClover = false; break;
+                                        case 'clue': stats.hasClue = false; break;
+                                        case 'ally': stats.hasAlly = false; break;
+                                    }
+                                    message = `Not enough 💰! Lost your ${itemToSteal}!`;
                                 }
                                 break;
-                            case '2': // HIDE
-                                if (stats.luck && stats.luck > 2) {
-                                    stats.hasAlly = true;
-                                    message = 'Found a friendly prisoner who becomes your ally! 🤝';
-                                } else {
-                                    message = 'Successfully avoided danger 🛡️';
+                            default: // RUN
+                                // Remove stolen item
+                                switch (itemToSteal) {
+                                    case 'map': stats.hasMap = false; break;
+                                    case 'staff': stats.hasStaff = false; break;
+                                    case 'lucky clover': stats.hasClover = false; break;
+                                    case 'clue': stats.hasClue = false; break;
+                                    case 'ally': stats.hasAlly = false; break;
                                 }
-                                break;
-                            default: // CALL or invalid input
-                                params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 2);
-                                message = 'Guards heard you! Moved back 2 spaces 👮';
+                                message = `Ran away! Lost your ${itemToSteal}!`;
                                 break;
                         }
                         GF.showEventMessage(message);
@@ -544,142 +599,65 @@
                 );
                 break;
 
-            case 52: // Mystic Staff
-                const staffAnimation = document.createElement('div');
-                staffAnimation.className = 'map-animation';
-                staffAnimation.innerHTML = '🔮';
-                targetCell.appendChild(staffAnimation);
-                setTimeout(() => staffAnimation.remove(), 1000);
-
-                stats.magic = (stats.magic || 0) + 3;
-                stats.hasMysticStaff = true;
-                message = 'Found the Mystic Staff! Magic +3 🔮';
-                if (stats.alignment === 'light') {
-                    stats.magic++;
-                    message += ' Light alignment bonus: Magic +1 ✨';
-                }
-                break;
-
-            case 53: // Demon's Deal
-                const demonInfo = `Current Status:\nGold: ${params.inventory.getGold(playerIndex)}\nKarma: ${stats.karma || 0}\n\n`;
-                if (confirm(demonInfo + 'Accept demon\'s deal?\n2,000 Gold for -2 karma 😈')) {
-                    params.inventory.modifyGold(playerIndex, 2000);
-                    stats.karma = (stats.karma || 0) - 2;
-                    stats.soulBound = true;
-                    message = 'Accepted demon\'s deal. +2,000 Gold but soul is bound 😈💰';
-                    GF.showGoldAnimation(targetCell, 2000);
-                } else if (stats.alignment === 'light') {
-                    message = 'Rejected demon. Light alignment rewarded with +1 strength ✨💪';
-                    stats.strength++;
-                } else {
-                    message = 'Rejected demon\'s offer 🛡️';
-                }
-                break;
-
-            case 54: // Rival Chase
-                const mapStatus = stats.hasMap ? 'Map was stolen!' : 'Rival has a map!';
-                const chaseChoice = prompt(
-                    `${mapStatus} 🗺️\n` +
-                    'CHASE: Need Strength 4+\n' +
-                    'BRIBE: Cost 300 Gold\n' +
-                    'CONTINUE: Move on\n' +
-                    'Type your choice:'
-                )?.toUpperCase();
-
-                switch (chaseChoice) {
-                    case 'CHASE':
-                        if (stats.strength >= 4) {
-                            stats.hasMap = true;
-                            stats.strength++;
-                            message = 'Caught the thief! Recovered map and gained strength 💪';
-                        } else {
-                            params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 4);
-                            message = 'Failed to catch thief! Moved back 4 spaces 🏃';
-                        }
-                        break;
-                    case 'BRIBE':
-                        if (params.inventory.getGold(playerIndex) >= 300) {
-                            params.inventory.modifyGold(playerIndex, -300);
-                            stats.hasMap = true;
-                            stats.hasAlly = true;
-                            message = 'Paid thief 300 Gold. They become your ally! 🤝';
-                        } else {
-                            message = 'Not enough gold to bribe 💰❌';
-                        }
-                        break;
-                    default:
-                        stats.hasMap = false;
-                        message = 'Continued without the map 🚶';
-                        break;
-                }
-                break;
-
             case 55: // Mysterious Portal
-                const portalInfo = `Current Status:\nClues: ${stats.hasClue ? 'Yes' : 'No'}\nSecrets: ${stats.hasSecrets ? 'Yes' : 'No'}\n\n`;
-                const portalChoice = confirm(portalInfo + 'Enter the mysterious portal? 🌀');
-
-                if (portalChoice) {
-                    if (stats.hasClue || stats.hasSecrets) {
-                        const advance = Math.floor(Math.random() * 6) + 3;
-                        setTimeout(() => params.movePlayer(playerIndex, advance), 500);
-                        message = `Your knowledge guided you! Moving forward ${advance} spaces ✨`;
-                    } else {
-                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 5);
-                        message = 'Portal sent you backward! Moved back 5 spaces 🌀';
-                    }
-                } else {
-                    message = 'Wisely avoided the unstable portal 🛡️';
-                }
+                message = 'A mysterious portal swirls before you...';
+                GF.showEventMessage(message);
                 break;
 
-            case 56: // Final Guardian
-                const guardianInfo = `Your Power:\nStrength: ${stats.strength}\nMagic: ${stats.magic || 0}\nMystic Staff: ${stats.hasMysticStaff ? 'Yes' : 'No'}\n\n`;
-
-                if (!stats.foughtGuardian) {
-                    const guardianBattle = stats.strength + (stats.magic || 0) + params.rollDice();
-                    if (guardianBattle >= 10 || stats.hasMysticStaff) {
-                        stats.foughtGuardian = true;
-                        stats.honor = (stats.honor || 0) + 2;
-                        message = 'Defeated the Final Guardian! Honor +2 👑⚔️';
-                    } else {
-                        params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - 6);
-                        message = 'Guardian overwhelmed you! Moved back 6 spaces 🛡️';
-                    }
+            case 56: // Meet Guardian
+                if (stats.metRoyal) {
+                    message = 'The guardian welcomes you!';
                 } else {
-                    message = 'The Guardian recognizes your previous victory ✨';
+                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    message = 'The guardian does not recognize you! Back to start';
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
                 break;
 
             case 29: // Dragon encounter
-                const dragonChoice = confirm(
+                GF.createChoiceUI(
                     `A fierce dragon blocks your path! 🐲\n` +
                     `Your Strength: ${stats.strength}\n` +
                     `Required Strength: 6\n` +
                     `Current Gold: ${params.inventory.getGold(playerIndex)}\n` +
                     (stats.hasAlly ? 'You have an ally! They can help you fight!\n' : '') +
                     `Bribe Cost: 500\n\n` +
-                    `Fight the dragon? (OK to fight, Cancel to bribe)`
-                );
-
-                if (dragonChoice) {
-                    if (stats.hasAlly && confirm('Use your ally to help fight the dragon? 🤝')) {
-                        params.inventory.markItemAsUsed(playerIndex, 'ally');
-                        message = 'You and your ally defeated the dragon! 🐲⚔️';
-                        stats.strength += 2;
-                    } else if (stats.strength >= 6) {
-                        message = 'You defeated the dragon with your strength! 🐲⚔️';
-                        stats.strength += 2;
-                    } else {
-                        params.playerPositions[playerIndex] = 0;
-                        message = 'The dragon was too powerful! Back to start 🐲';
+                    `Fight the dragon? (OK to fight, Cancel to bribe)`,
+                    [
+                        'FIGHT',
+                        'BRIBE'
+                    ],
+                    (choice) => {
+                        switch (choice) {
+                            case '1': // FIGHT
+                                if (stats.hasAlly && confirm('Use your ally to help fight the dragon? 🤝')) {
+                                    params.inventory.markItemAsUsed(playerIndex, 'ally');
+                                    message = 'You and your ally defeated the dragon! 🐲⚔️';
+                                    stats.strength += 2;
+                                } else if (stats.strength >= 6) {
+                                    message = 'You defeated the dragon with your strength! 🐲⚔️';
+                                    stats.strength += 2;
+                                } else {
+                                    params.playerPositions[playerIndex] = 0;
+                                    message = 'The dragon was too powerful! Back to start 🐲';
+                                }
+                                break;
+                            case '2': // BRIBE
+                                if (params.inventory.getGold(playerIndex) >= 500) {
+                                    params.inventory.modifyGold(playerIndex, -500);
+                                    message = 'Bribed the dragon with 500 Gold to pass safely 🐲💰';
+                                } else {
+                                    params.playerPositions[playerIndex] = 0;
+                                    message = 'Not enough gold to bribe! Back to start 🐲';
+                                }
+                                break;
+                        }
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
+                        params.updateGoldDisplay(playerIndex);
                     }
-                } else if (params.inventory.getGold(playerIndex) >= 500) {
-                    params.inventory.modifyGold(playerIndex, -500);
-                    message = 'Bribed the dragon with 500 Gold to pass safely 🐲💰';
-                } else {
-                    params.playerPositions[playerIndex] = 0;
-                    message = 'Not enough gold to bribe! Back to start 🐲';
-                }
+                )
                 break;
         }
 
