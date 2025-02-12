@@ -159,7 +159,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 11: // Good karma
-                stats.status = 'good karma';
+                stats.angel = true;
                 message = 'You helped a lost child! + 😇';
                 GF.showItemAnimation(targetCell, '😇');
                 break;
@@ -172,17 +172,17 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 13: // Thieves
                 const lostGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
-                inventory.modifyGold(playerIndex, lostGold);
+                inventory.modifyGold(playerIndex, -lostGold);
                 message = `Thieves stole ${lostGold} 💰 from you!`;
                 showLostGoldAnimation(targetCell, lostGold);
                 break;
 
             case 14: // Horse
-                // Move 2 extra steps
-                message = 'You tamed a horse! 🐎';
+                const horseSteps = Math.floor(Math.random() * 3) + 1; // Random 1-3 steps
+                message = `You tamed a horse! Moving ${horseSteps} steps forward!`;
                 setTimeout(() => {
-                    movePlayer(playerIndex, 2);
-                    showEventMessage('Your horse carries you 2 steps further!');
+                    movePlayer(playerIndex, horseSteps);
+                    showEventMessage(`Your horse carried you ${horseSteps} steps forward!`);
                 }, 1000);
                 
                 break;
@@ -191,6 +191,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 // Determine karma effects
                 if (stats.angel) {
                     stats.hasAlly = true;
+                    stats.angel = false;
                     message = 'The ghost is moved by your pure heart! +🤝';
                     GF.showItemAnimation(targetCell, '🤝');
                 } else {
@@ -280,7 +281,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         break;
                     case 2:
                         const strength = Math.floor(Math.random() * 3);
-                        stats.strength += 2;
+                        stats.strength += strength;
                         message = `Found ancient weapons! +${strength} 💪`;
                         GF.showItemAnimation(targetCell, '💪');
                         break;
@@ -352,7 +353,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                                 message = 'Declined the sorcerer\'s offer';
                         }
                         GF.showEventMessage(message);
-                        params.updatePlayerStats(playerIndex);
+                        updatePlayerStats(playerIndex);
                     }
                 );
                 return; // Exit early due to async choice
@@ -398,7 +399,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 25: // Cross the river
                 if (stats.strength >= 5) {
                     stats.strength -= 2;
-                    message = 'You crossed the river safely thanks to your 💪!';
+                    message = 'You crossed the river safely but lost 2 💪 due to the exhaustion.';
                 } else {
                     message = 'Too weak to cross! The current pushes you back!';
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
@@ -456,7 +457,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     stats.hasMap = false;
                     inventory.markItemAsUsed(playerIndex, 'map');
                 } else {
-                    message = 'Lost in mysterious fog! Skip 1 turn 🌫️';
+                    message = 'Lost in mysterious fog! Skip 1 turn';
                     stats.skipNextTurn = true;
                 }
                 break;
@@ -467,12 +468,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     inventory.markItemAsUsed(playerIndex, 'clue');
                     const shipLoot = Math.floor(Math.random() * 300) + 200; // 200-500 gold
                     inventory.modifyGold(playerIndex, shipLoot);
-                    message = `Found ${shipLoot} 💰 on the abandoned ship! 🚢`;
+                    message = `Found ${shipLoot} 💰 on the abandoned ship!`;
                     showGoldAnimation(targetCell, shipLoot);
                 } else {
                     const smallLoot = Math.floor(Math.random() * 100) + 50; // 50-150 gold
                     inventory.modifyGold(playerIndex, smallLoot);
-                    message = `Found ${smallLoot} 💰 on the ship. Map would help find more! ⛵`;
+                    message = `Found ${smallLoot} 💰 on the ship. Map would help find more!`;
                     showGoldAnimation(targetCell, smallLoot);
                 }
                 break;
@@ -668,16 +669,17 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             case 32: // Strange noises
                 if (stats.magic > 2) {
                     message = 'Your 🔮 warded off the danger!';
-                    stats.magic -= 2;
+                    stats.magic -= 1;
                 } else {
                     const danger = Math.random() < 0.5;
                     if (danger) {
                         stats.skipNextTurn = true;
-                        message = localCheckHealth() || 'Surprise attack in the night! Lost 1 turn';
+                        message = 'Surprise attack in the night! Lost 1 turn';
                     } else {
-                        message = 'Strange noises in the night... but nothing happened 🌙';
+                        message = 'Strange noises in the night... but nothing happened';
                     }
                 }
+                updatePlayerStats(playerIndex);
                 break;
         }
     }
