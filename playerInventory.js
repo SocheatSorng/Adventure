@@ -15,7 +15,7 @@ class PlayerInventory {
             hasClue: false,
             hasHouse: false,
             hasStaff: false,
-            metRoyal: false,
+            getRoyal: false,
             hasCrown: false,
             hasTitan: false,
             hasPotion: false,
@@ -43,7 +43,7 @@ class PlayerInventory {
         if (stats.hasHouse) statDisplay.push('🏠'); // Add house emoji when player has a house
         if (stats.devil) statDisplay.push('😈');    // Add devil emoji when player has devil
         if (stats.hasStaff) statDisplay.push('🪄');  // Add wand emoji when player has wand
-        if (stats.metRoyal) statDisplay.push('🏰'); 
+        if (stats.getRoyal) statDisplay.push('🏰'); 
         if (stats.hasCrown) statDisplay.push('👑');
         if (stats.hasTitan) statDisplay.push('🧌');
         if (stats.hasPotion) statDisplay.push('🧪');

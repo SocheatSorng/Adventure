@@ -32,6 +32,7 @@
                             case '1': // DRINK
                                 stats.hasClover = true;
                                 message = 'Drank the luck potion! Gained luck 🍀';
+                                GF.showItemAnimation(targetCell, '🍀');
                                 break;
                             case '2': // SELL
                                 params.inventory.modifyGold(playerIndex, 500);
@@ -47,50 +48,75 @@
                 break;
 
             case 35: // Pickpocket
-                GF.createChoiceUI(
-                    `A pickpocket is trying to steal your 💰!${stats.hasClover ? '\nYou have a Lucky Clover! 🍀' : ''}`,
-                    [
-                        'CATCH - Roll dice to catch',
-                        'USE 🍀 - Prevent theft'
-                    ].filter(Boolean),
-                    (choice) => {
-                        switch (choice) {
-                            case '1': // CATCH
-                                const dexRoll = params.rollDice();
-                                if (dexRoll >= 5) {
-                                    message = `Rolled ${dexRoll}! Caught the pickpocket! 🦹‍♂️❌`;
-                                } else {
-                                    const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
-                                    params.inventory.modifyGold(playerIndex, -stolenAmount);
-                                    message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
-                                    params.inventory.modifyGold(playerIndex, -stolenAmount);
-                                }
-                                break;
-                            case '2': // USE CLOVER
-                                if (stats.hasClover) {
-                                    stats.hasClover = false;
-                                    params.inventory.markItemAsUsed(playerIndex, 'clover');
-                                    message = 'Your Lucky Clover wards off the pickpocket! 🍀';
-                                }
-                                break;
+                if (stats.hasClover) {
+                    // Show choice if player has clover
+                    GF.createChoiceUI(
+                        `A pickpocket is trying to steal your 💰!\nYou have a Lucky Clover! 🍀`,
+                        [
+                            'CATCH - Roll dice to catch',
+                            'USE 🍀 - Prevent theft'
+                        ],
+                        (choice) => {
+                            switch (choice) {
+                                case '1': // CATCH
+                                    const dexRoll = params.rollDice();
+                                    if (dexRoll >= 5) {
+                                        message = `Rolled ${dexRoll}! Caught the pickpocket! 🦹‍♂️❌`;
+                                    } else {
+                                        const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
+                                        params.inventory.modifyGold(playerIndex, -stolenAmount);
+                                        message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
+                                        params.inventory.modifyGold(playerIndex, -stolenAmount);
+                                    }
+                                    break;
+                                case '2': // USE CLOVER
+                                    if (stats.hasClover) {
+                                        stats.hasClover = false;
+                                        params.inventory.markItemAsUsed(playerIndex, 'clover');
+                                        message = 'Your Lucky Clover wards off the pickpocket! 🍀';
+                                    }
+                                    break;
+                            }
+                            GF.showEventMessage(message);
+                            params.updatePlayerStats(playerIndex);
+                            params.updateGoldDisplay(playerIndex);
                         }
-                        GF.showEventMessage(message);
-                        params.updatePlayerStats(playerIndex);
-                        params.updateGoldDisplay(playerIndex);
-                    }
+                        
                 );
+                } else {
+                    // Auto CATCH if no clover
+                    const dexRoll = params.rollDice();
+                    if (dexRoll >= 3) {
+                        message = `Rolled ${dexRoll}! Caught the pickpocket!`;
+                    } else {
+                        const stolenAmount = Math.min(300, params.inventory.getGold(playerIndex));
+                        params.inventory.modifyGold(playerIndex, -stolenAmount);
+                        message = `Rolled ${dexRoll}! Pickpocket stole ${stolenAmount} gold! 🦹‍♂️💰`;
+                        GF.showLostGoldAnimation(targetCell, -stolenAmount);
+                    }
+                    GF.showEventMessage(message);
+                    params.updatePlayerStats(playerIndex);
+                    params.updateGoldDisplay(playerIndex);
+                }
                 break;
 
             case 36: // Noble's job
-                if (stats.hasAlly) {
-                    params.inventory.modifyGold(playerIndex, 1200);
-                    message = 'Your ally helped complete the job! Earned 1200 💰 from the noble!';
-                    GF.showGoldAnimation(targetCell, 1200);
+                if (stats.hasTitan) {
+                    // Royal effect with titan
+                    message = 'Your titan impressed the noble! Gain 🏰 ';
+                    stats.getRoyal = true;
+                    stats.hasTitan = false;
+                    GF.showItemAnimation(targetCell, '🏰');
                 } else {
-                    params.inventory.modifyGold(playerIndex, 800);
-                    message = 'Completed a job for a noble! Earned 800 💰 👑';
-                    GF.showGoldAnimation(targetCell, 800);
+                    // Random gold reward up to 500
+                    const reward = Math.floor(Math.random() * 501); // 0-500 range
+                    params.inventory.modifyGold(playerIndex, reward);
+                    message = `Completed a job for the noble! +${reward} 💰`;
+                    GF.showGoldAnimation(targetCell, reward);
                 }
+                GF.showEventMessage(message);
+                params.updatePlayerStats(playerIndex);
+                params.updateGoldDisplay(playerIndex);
                 break;
 
             case 37: // Buy house
@@ -106,21 +132,14 @@
                                 if (params.inventory.getGold(playerIndex) >= 1000) {
                                     params.inventory.modifyGold(playerIndex, -1000);
                                     stats.hasHouse = true;
-                                    if (!stats.hasHouse) {
-                                        stats.hasHouse = true;
-                                        message = 'Bought a house! 🏠';
-                                        const houseAnimation = document.createElement('div');
-                                        houseAnimation.className = 'house-animation';
-                                        houseAnimation.innerHTML = '🏠';
-                                        targetCell.appendChild(houseAnimation);
-                                        setTimeout(() => houseAnimation.remove(), 3000);
-                                    }
+                                    message = 'Bought the 🏠!';
+                                    GF.showItemAnimation(targetCell, '🏠');
                                 } else {
-                                    message = 'Not enough gold to buy a house 🏠❌';
+                                    message = 'Not enough gold to buy a house!';
                                 }
                                 break;
                             default: // DECLINE
-                                message = 'Declined to buy the house 🏠';
+                                message = 'Declined to buy the house';
                                 break;
                         }
                         GF.showEventMessage(message);
@@ -158,10 +177,10 @@
                                     token.style.top = '50%';
                                     token.style.left = '50%';
                                 }
-                                message = 'Your strength impressed them! Moving to the Arena Battle! ⚔️';
+                                message = 'Your strength impressed them! Moving to the Arena Battle!';
                             } else {
                                 // Move back to Pickpocket
-                                params.playerPositions[playerIndex] = 34; // Index 34 = Grid 35
+                                params.playerPositions[playerIndex] = 32; // Index 32 = Grid 33
                                 const pickpocketCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(34/8) + 1}) td:nth-child(${34%8 + 1})`);
                                 const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                                 if (token && pickpocketCell) {
@@ -169,10 +188,10 @@
                                     token.style.top = '50%';
                                     token.style.left = '50%';
                                 }
-                                message = 'Mission too dangerous! Moved back to grid 35 🏃';
+                                message = 'Mission too dangerous! Moved back to city';
                             }
                         } else {
-                            message = 'Declined the dangerous mission 🛡️';
+                            message = 'Declined the dangerous mission';
                         }
                         GF.showEventMessage(message);
                         params.updatePlayerStats(playerIndex);
@@ -194,9 +213,9 @@
                             case '1': // PAY
                                 if (params.inventory.getGold(playerIndex) >= 500) {
                                     params.inventory.modifyGold(playerIndex, -500);
-                                    message = 'Paid the guards 500 Gold to avoid arrest 💰';
+                                    message = 'Paid the guards 500 💰 to avoid arrest!';
                                 } else {
-                                    message = 'Not enough gold to bribe! Guards take you to jail 🚓';
+                                    message = 'Not enough 💰 to bribe! Guards take you to jail';
                                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
                                 }
                                 break;
@@ -212,7 +231,7 @@
                                 break;
                             default: // SURRENDER
                                 GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
-                                message = 'Surrendered to the guards! Back to start 🚓';
+                                message = 'Surrendered to the guards! Back to start';
                                 break;
                         }
                         GF.showEventMessage(message);
@@ -228,17 +247,17 @@
                     [
                         'FIGHT - Roll dice for glory',
                         'DECLINE - Return to start',
-                        stats.potions ? 'USE POTION - Auto win' : null
+                        stats.potions ? 'USE 🧪 - Auto win' : null
                     ].filter(Boolean),
                     (choice) => {
                         switch (choice) {
                             case '1': // FIGHT
                                 const battleRoll = params.rollDice();
                                 if (battleRoll >= 6) {
-                                    params.inventory.modifyGold(playerIndex, 2000);
-                                    stats.strength++;
-                                    message = `Arena victory! Rolled ${battleRoll}! Won 2,000 Gold and +1 Strength 🏆`;
-                                    GF.showGoldAnimation(targetCell, 2000);
+                                    const goldWon = Math.floor(Math.random() * 501); // Random 0-500
+                                    params.inventory.modifyGold(playerIndex, goldWon);
+                                    message = `Arena victory! Rolled ${battleRoll}! Won ${goldWon} 💰`;
+                                    GF.showGoldAnimation(targetCell, goldWon);
                                 } else {
                                     // Send player back to start
                                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
@@ -250,12 +269,11 @@
                                 message = 'Declined the arena battle. Back to start ⚔️';
                                 break;
                             case '3': // USE POTION
-                                if (stats.potions) {
-                                    stats.potions--;
-                                    params.inventory.modifyGold(playerIndex, 2000);
-                                    stats.strength++;
-                                    message = 'Used potion to win! +2,000 💰 and +1 💪 🧪🏆';
-                                    GF.showGoldAnimation(targetCell, 2000);
+                                if (stats.hasPotion) {
+                                    stats.hasPotion = false;
+                                    params.inventory.modifyGold(playerIndex, 500);
+                                    message = 'Used 🧪 to win! +500 💰';
+                                    GF.showGoldAnimation(targetCell, 500);
                                 }
                                 break;
                         }
@@ -269,11 +287,12 @@
             case 41: // Secret treasure room
                 if (stats.hasClover) {
                     // Found secret treasure room with lucky clover
-                    params.inventory.modifyGold(playerIndex, 1500);
-                    stats.hasClover = false; // Use up the clover
+                    const foundGold = Math.floor(Math.random() * 501) + 50; // Random 50-500
+                    params.inventory.modifyGold(playerIndex, foundGold);
+                    stats.hasClover = false;
                     params.inventory.markItemAsUsed(playerIndex, 'clover');
-                    message = 'Your 🍀 led you to a secret treasure room! +1,500 💰';
-                    GF.showGoldAnimation(targetCell, 1500);
+                    message = `Your 🍀 led you to a secret treasure room! +${foundGold} 💰`;
+                    GF.showGoldAnimation(targetCell, foundGold);
                 } else {
                     message = 'Nothing interesting here...';
                 }
@@ -284,32 +303,30 @@
 
             case 42: // Clue to final goal
                 stats.hasClue = true;
-                message = 'Found a clue about the Golden Crown! Future choices will be clearer 📜';
-                const clueAnimation = document.createElement('div');
-                clueAnimation.className = 'map-animation';
-                clueAnimation.innerHTML = '📜';
-                targetCell.appendChild(clueAnimation);
-                setTimeout(() => clueAnimation.remove(), 1000);
+                message = 'Found a clue! This will help you solve future obstacles and find the Golden Crown! 📜';
+                GF.showItemAnimation(targetCell, '📜');
                 break;
 
             case 43: // Crime Lord's deal
                 GF.createChoiceUI(
                     'You met the Crime Lord! 💰',
                     [
-                        'ACCEPT - 1,000 Gold but gained bad karma',
+                        'ACCEPT - 500 Gold but gained bad karma',
                         'REFUSE - Keep your honor'
                     ],
                     (choice) => {
                         switch (choice) {
                             case '1': // ACCEPT
-                                params.inventory.modifyGold(playerIndex, 1000);
-                                message = 'Accepted dark deal! +1,000 💰, +😈';
+                                params.inventory.modifyGold(playerIndex, 500);
+                                message = 'Accepted dark deal! +500 💰, +😈';
                                 stats.devil = true;
                                 stats.angel = false;
-                                GF.showGoldAnimation(targetCell, 1000);
+                                GF.showGoldAnimation(targetCell, 500);
+                                GF.showItemAnimation(targetCell, '😈');
                                 break;
                             default: // REFUSE
                                 message = 'Refused the Crime Lord. +😇';
+                                GF.showItemAnimation(targetCell, '😇');
                                 stats.angel = true;
                                 stats.devil = false;
                                 break;
@@ -337,7 +354,7 @@
                         }, 1000);
                     }
                 } else {
-                    message = 'Not enough magic to cast teleport! Need at least 3 🔮❌';
+                    message = 'Not enough magic to cast teleport! Need at least 3 🔮';
                 }
                 GF.showEventMessage(message);
                 break;
@@ -353,38 +370,40 @@
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
-                stats.metRoyal = true;
+                stats.getRoyal = true;
                 break;
 
                 case 46: // Queen's Secret Mission
+                const getGold = Math.floor(Math.random() * 351) + 150; // Random 150-500
                 if (stats.angel) {
                     // Angel karma: Auto-success and bonus gold
-                    params.inventory.modifyGold(playerIndex, 3000);
-                    message = 'The Queen trusts your pure heart! Mission success! +3,000 💰';
-                    GF.showGoldAnimation(targetCell, 3000);
+                    params.inventory.modifyGold(playerIndex, getGold);
+                    message = `The Queen trusts your pure heart! Mission success! +${getGold} 💰`;
+                    GF.showGoldAnimation(targetCell, getGold);
                 } else if (stats.devil) {
                     // Devil karma: Guards catch you
                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
-                    message = 'The Queen\'s guards recognize your evil deeds! Back to start 😈';
+                    message = 'The Queen\'s guards recognize your evil deeds! Back to start';
                 } else {
                     // No karma: Normal mission choice
                     GF.createChoiceUI(
                         'The Queen offers you a secret mission!',
                         [
-                            'ACCEPT - Risk a ❤️ for 2,500 Gold',
-                            'DECLINE - Keep your health'
+                            'ACCEPT - Risk golds for golds',
+                            'DECLINE - Keep your golds'
                         ],
                         (choice) => {
                             switch (choice) {
                                 case '1': // ACCEPT
-                                    const missionRoll = params.rollDice() + (stats.luck || 0);
+                                    const missionRoll = params.rollDice();
                                     if (missionRoll >= 4) {
-                                        params.inventory.modifyGold(playerIndex, 2500);
-                                        message = 'Mission successful! Earned 2,500 💰';
-                                        GF.showGoldAnimation(targetCell, 2500);
+                                        params.inventory.modifyGold(playerIndex, getGold);
+                                        message = `Mission successful! +${getGold} 💰`;
+                                        GF.showGoldAnimation(targetCell, getGold);
                                     } else {
-                                        stats.health--;
-                                        message = localCheckHealth() || 'Mission failed! Lost a ❤️❌';
+                                        message = `Mission failed! Lost ${getGold} 💰`;
+                                        params.inventory.modifyGold(playerIndex, -getGold);
+                                        GF.showLostGoldAnimation(targetCell, -getGold);
                                     }
                                     break;
                                 default: // DECLINE
@@ -401,7 +420,7 @@
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
                 params.updateGoldDisplay(playerIndex);
-                stats.metRoyal = true;
+                stats.getRoyal = true;
                 break;
 
             case 47: // Secret Society
@@ -418,11 +437,13 @@
                                 stats.alignment = 'light';
                                 stats.magic = (stats.magic || 0) + 2;
                                 message = 'Joined the Light Society! Magic +2 🔮';
+                                GF.showItemAnimation(targetCell, '🔮');
                                 break;
                             case '2': // JOIN DARK
                                 stats.alignment = 'dark';
                                 stats.strength += 2;
                                 message = 'Joined the Dark Society! Strength +2 💪';
+                                GF.showItemAnimation(targetCell, '💪');
                                 break;
                             default: // DECLINE
                                 message = 'Declined to join any society';
@@ -436,13 +457,13 @@
 
             case 48: // City in Chaos
                 if (stats.hasAlly) {
-                    message = 'Your ally helped you escape the chaos safely! 🤝';
+                    message = 'Your 🤝 helped you escape the chaos safely!';
                     stats.hasAlly = false; // Ally leaves after helping
                     params.inventory.markItemAsUsed(playerIndex, 'ally');
                 } else {
                     // Send player back to start
                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
-                    message = 'Got caught in the chaos! Back to start! 🌪️';
+                    message = 'Got caught in the chaos! Back to start!';
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
@@ -464,32 +485,21 @@
                     stats.hasClover = false; // Use up the clover
                     params.inventory.markItemAsUsed(playerIndex, 'clover');
                     message = 'Your 🍀 protected you from the castle\'s curse!';
-                    
-                    // Reveal secrets if has clue
-                    if (stats.hasClue) {
-                        stats.hasSecrets = true;
-                        message = 'The ghosts reveal ancient secrets about the Golden Crown! 👻📜';
-                        const secretAnimation = document.createElement('div');
-                        secretAnimation.className = 'map-animation';
-                        secretAnimation.innerHTML = '📜';
-                        targetCell.appendChild(secretAnimation);
-                        setTimeout(() => secretAnimation.remove(), 1000);
-                    }
+                
                 } else {
                     // Lose everything without clover protection
                     const oldGold = params.inventory.getGold(playerIndex);
                     params.inventory.modifyGold(playerIndex, -oldGold);
-                    stats.health = 1;
                     stats.strength = 0;
                     stats.magic = 0;
                     stats.hasMap = false;
-                    stats.angel = false;
                     stats.hasAlly = false;
                     stats.hasClover = false;  
                     stats.hasClue = false;
-                    stats.hasHouse = false;
-                    stats.devil = false;
                     stats.hasStaff = false;
+                    stats.hasPotion = false;
+                    stats.hasTitan = false;
+                    stats.hasCrown = false;
             
                     message = 'The castle\'s curse took everything from you!';
                 }
@@ -502,6 +512,7 @@
                 if (stats.hasClue) {
                     // Player with clue knows how to escape safely
                     message = 'Your 📜 helped you escape the trapdoor!';
+                    stats.hasClue = false; // Use up the clue
                     params.inventory.markItemAsUsed(playerIndex, 'clue');
                 } else {
                     // Player without clue loses a turn
@@ -513,29 +524,28 @@
                 break;
 
             case 52: // Mystic Staff
-                const staffAnimation = document.createElement('div');
-                staffAnimation.className = 'map-animation';
-                staffAnimation.innerHTML = '🪄';
-                targetCell.appendChild(staffAnimation);
-                setTimeout(() => staffAnimation.remove(), 1000);
-
                 stats.hasStaff = true;
                 message = 'Found the Mystic Staff! +🪄';
                 GF.showEventMessage(message);
+                GF.showItemAnimation(targetCell, '🪄');
                 break;
 
             case 53: // Demon's Lord
                 if (stats.strength >= 5) {
                     message = 'Your 💪 protected you from demon lord\'s curse!';
-                    stats.strength -= 5;
+                    stats.strength -= 3;
+                } else if (stats.magic >= 5) {
+                    message = 'Your 🔮 protected you from demon lord\'s curse!';
+                    stats.magic -= 3;
                 } else {
-                    // Lose everything without clover protection
+                    
+                    stats.magic = 0;
+                    stats.strength = 0;
                     const oldGold = params.inventory.getGold(playerIndex);
                     params.inventory.modifyGold(playerIndex, -oldGold);
-                    stats.strength = 0;
-                    stats.magic = 0;
+                    GF.showLostGoldAnimation(targetCell, -oldGold);
             
-                    message = 'You fought the demon lord but were exhausted! Lost all 💪 and 🔮!';
+                    message = 'You fought the demon lord but were exhausted! Lost all 💪 and 🔮 and all 💰!';
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
@@ -550,6 +560,9 @@
                 else if (stats.hasClover) itemToSteal = 'lucky clover';
                 else if (stats.hasClue) itemToSteal = 'clue';
                 else if (stats.hasAlly) itemToSteal = 'ally';
+                else if (stats.hasCrown) itemToSteal = 'crown';
+                else if (stats.hasPotion) itemToSteal = 'potion';
+                else if (stats.hasTitan) itemToSteal = 'titan';
                 else {
                     message = 'The rival found nothing worth stealing!';
                     GF.showEventMessage(message);
@@ -568,6 +581,7 @@
                                 if (params.inventory.getGold(playerIndex) >= 300) {
                                     params.inventory.modifyGold(playerIndex, -300);
                                     message = `Paid 300 💰 to get your ${itemToSteal} back!`;
+                                    GF.showLostGoldAnimation(targetCell, -300);
                                 } else {
                                     // Remove stolen item
                                     switch (itemToSteal) {
@@ -576,6 +590,9 @@
                                         case 'lucky clover': stats.hasClover = false; break;
                                         case 'clue': stats.hasClue = false; break;
                                         case 'ally': stats.hasAlly = false; break;
+                                        case 'crown': stats.hasCrown = false; break;
+                                        case 'potion': stats.hasPotion = false; break;
+                                        case 'titan': stats.hasTitan = false; break;
                                     }
                                     message = `Not enough 💰! Lost your ${itemToSteal}!`;
                                 }
@@ -588,6 +605,9 @@
                                     case 'lucky clover': stats.hasClover = false; break;
                                     case 'clue': stats.hasClue = false; break;
                                     case 'ally': stats.hasAlly = false; break;
+                                    case 'crown': stats.hasCrown = false; break;
+                                    case 'potion': stats.hasPotion = false; break;
+                                    case 'titan': stats.hasTitan = false; break;
                                 }
                                 message = `Ran away! Lost your ${itemToSteal}!`;
                                 break;
@@ -605,7 +625,7 @@
                 break;
 
             case 56: // Meet Guardian
-                if (stats.metRoyal) {
+                if (stats.getRoyal) {
                     message = 'The guardian welcomes you!';
                 } else {
                     GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
@@ -613,51 +633,6 @@
                 }
                 GF.showEventMessage(message);
                 params.updatePlayerStats(playerIndex);
-                break;
-
-            case 29: // Dragon encounter
-                GF.createChoiceUI(
-                    `A fierce dragon blocks your path! 🐲\n` +
-                    `Your Strength: ${stats.strength}\n` +
-                    `Required Strength: 6\n` +
-                    `Current Gold: ${params.inventory.getGold(playerIndex)}\n` +
-                    (stats.hasAlly ? 'You have an ally! They can help you fight!\n' : '') +
-                    `Bribe Cost: 500\n\n` +
-                    `Fight the dragon? (OK to fight, Cancel to bribe)`,
-                    [
-                        'FIGHT',
-                        'BRIBE'
-                    ],
-                    (choice) => {
-                        switch (choice) {
-                            case '1': // FIGHT
-                                if (stats.hasAlly && confirm('Use your ally to help fight the dragon? 🤝')) {
-                                    params.inventory.markItemAsUsed(playerIndex, 'ally');
-                                    message = 'You and your ally defeated the dragon! 🐲⚔️';
-                                    stats.strength += 2;
-                                } else if (stats.strength >= 6) {
-                                    message = 'You defeated the dragon with your strength! 🐲⚔️';
-                                    stats.strength += 2;
-                                } else {
-                                    params.playerPositions[playerIndex] = 0;
-                                    message = 'The dragon was too powerful! Back to start 🐲';
-                                }
-                                break;
-                            case '2': // BRIBE
-                                if (params.inventory.getGold(playerIndex) >= 500) {
-                                    params.inventory.modifyGold(playerIndex, -500);
-                                    message = 'Bribed the dragon with 500 Gold to pass safely 🐲💰';
-                                } else {
-                                    params.playerPositions[playerIndex] = 0;
-                                    message = 'Not enough gold to bribe! Back to start 🐲';
-                                }
-                                break;
-                        }
-                        GF.showEventMessage(message);
-                        params.updatePlayerStats(playerIndex);
-                        params.updateGoldDisplay(playerIndex);
-                    }
-                )
                 break;
         }
 
