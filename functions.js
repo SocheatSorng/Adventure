@@ -56,6 +56,26 @@ window.GameFunctions = {
         animation.addEventListener('animationend', () => animation.remove());
     },
 
+    showLostGoldAnimation: function(cell, amount) {
+        const rect = cell.getBoundingClientRect();
+        const animation = document.createElement('div');
+        animation.className = 'lost-gold-animation';
+        animation.textContent = `-${amount} 🪙`;
+        animation.style.left = `${rect.left + rect.width/2}px`;
+        animation.style.top = `${rect.top + rect.height/2}px`;
+        document.body.appendChild(animation);
+        animation.addEventListener('animationend', () => animation.remove());
+    },
+
+    showItemAnimation: function(cell, emoji) {
+        const animation = document.createElement('div');
+        animation.className = 'map-animation';
+        animation.innerHTML = emoji;
+        animation.style.fontSize = '24px';
+        cell.appendChild(animation);
+        setTimeout(() => animation.remove(), 1000);
+    },
+
     showEventMessage: function(message) {
         const eventDisplay = document.getElementById('eventDisplay');
         eventDisplay.textContent = message || 'Roll the dice to move!';

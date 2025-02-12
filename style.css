@@ -140,6 +140,15 @@ td img[src^="data:image"] {
     text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
 }
 
+.lost-gold-animation {
+    position: fixed;
+    color: #FF4136;
+    font-weight: bold;
+    pointer-events: none;
+    animation: floatGold 1.5s ease-out forwards;
+    text-shadow: 0 0 4px rgba(255, 65, 54, 0.5);
+}
+
 @keyframes floatGold {
     0% {
         transform: translateY(0);

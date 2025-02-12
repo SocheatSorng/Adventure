@@ -5,6 +5,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     updatePlayerStats,
     updateGoldDisplay,
     showGoldAnimation,
+    showLostGoldAnimation,
     rollDice,
     cellOccupancy,
     TOTAL_CELLS,
@@ -38,6 +39,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             updatePlayerStats,
             updateGoldDisplay,
             showGoldAnimation,
+            showLostGoldAnimation,
             rollDice,
             cellOccupancy,
             TOTAL_CELLS,
@@ -57,11 +59,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 message = 'Found a secret map! 🗺️';
 
                 // Add map gained animation
-                const mapAnimation = document.createElement('div');
-                mapAnimation.className = 'map-animation';
-                mapAnimation.innerHTML = '🗺️';
-                targetCell.appendChild(mapAnimation);
-                setTimeout(() => mapAnimation.remove(), 3000);
+                GF.showItemAnimation(targetCell, '🗺️');
                 break;
 
             case 3: // Bandit attack
@@ -69,6 +67,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 stats.skipNextTurn = true;
                 const stolenGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
                 inventory.modifyGold(playerIndex, -stolenGold);
+                showLostGoldAnimation(targetCell, stolenGold);
                 message = `Bandits ambushed you! Lost ${stolenGold} 💰 and next turn!`;
                 break;
 
@@ -89,12 +88,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 message = 'Gained a 🧪!';
 
                 // Add potion gained animation
-                const potionAnimation = document.createElement('div');
-                potionAnimation.className = 'map-animation';
-                potionAnimation.innerHTML = '🧪'
-                potionAnimation.style.fontSize = '24px';  // Make emoji bigger
-                targetCell.appendChild(potionAnimation);
-                setTimeout(() => potionAnimation.remove(), 1000);
+                GF.showItemAnimation(targetCell, '🧪');
                 break;
 
             case 6: // Gambling with two dice
@@ -161,12 +155,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 message = 'You learned a secret spell! +1🔮';
 
                 // Create floating animation for magic icon
-                const magicAnimation = document.createElement('div');
-                magicAnimation.className = 'map-animation';
-                magicAnimation.innerHTML = '🔮'
-                magicAnimation.style.fontSize = '24px';  // Make emoji bigger
-                targetCell.appendChild(magicAnimation);
-                setTimeout(() => magicAnimation.remove(), 1000);
+                GF.showItemAnimation(targetCell, '🔮');
                 break;
 
             case 10: // Lose turn
@@ -179,84 +168,72 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 message = 'You helped a lost child! + 😇';
                 
                 // Create floating animation for karma icon
-                const karmaAnimation = document.createElement('div');
-                karmaAnimation.className = 'map-animation';
-                karmaAnimation.innerHTML = '😇';
-                karmaAnimation.style.fontSize = '24px';  // Make emoji bigger
-                targetCell.appendChild(karmaAnimation);
-                setTimeout(() => karmaAnimation.remove(), 1000);
+                GF.showItemAnimation(targetCell, '😇');
                 break;
 
             case 12: // Mystic sword
                 stats.strength += 2;
                 message = 'You found a mystic sword! +2💪';
+                GF.showItemAnimation(targetCell, '💪');
                 break;
 
             case 13: // Thieves
-                inventory.modifyGold(playerIndex, -100);
-                message = 'Thieves stole your 💰! Lost 100 💰';
+                const lostGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
+                inventory.modifyGold(playerIndex, lostGold);
+                message = `Thieves stole ${lostGold} 💰 from you!`;
                 break;
 
             case 14: // Horse
                 // Move 2 extra steps
+                message = 'You tamed a horse! 🐎';
                 setTimeout(() => {
                     movePlayer(playerIndex, 2);
                     showEventMessage('Your horse carries you 2 steps further!');
                 }, 1000);
-                message = 'You tamed a horse! 🐎';
+                
                 break;
 
-            case 15: // Math Problem
-                const num1 = Math.floor(Math.random() * 10) + 1;
-                const num2 = Math.floor(Math.random() * 10) + 1;
-                const operator = ['+', '-', '*'][Math.floor(Math.random() * 3)];
-                const correctAnswer = operator === '+' ? num1 + num2 : 
-                                    operator === '-' ? num1 - num2 : 
-                                    num1 * num2;
-
-                GF.createChoiceUI(
-                    `Solve: ${num1} ${operator} ${num2} = ?`,
-                    [
-                        `${correctAnswer - 1}`,
-                        `${correctAnswer}`,
-                        `${correctAnswer + 1}`,
-                        `${correctAnswer + 2}`
-                    ],
-                    (choice) => {
-                        if (choice === '2') {  // Second option is always correct
-                            inventory.modifyGold(playerIndex, 200);
-                            message = 'Correct! You won 200 💰!';
-                            showGoldAnimation(targetCell, 200);
-                        } else {
-                            message = 'Wrong answer! Better luck next time!';
-                        }
-                        showEventMessage(message);
-                        updatePlayerStats(playerIndex);
-                        updateGoldDisplay(playerIndex);
-                    }
-                );
-                return; // Exit early due to async nature
+            case 15: // Ghost encounter
+                // Determine karma effects
+                if (stats.angel) {
+                    stats.hasAlly = true;
+                    message = 'The ghost is moved by your pure heart! +🤝';
+                    
+                    // Show ally animation
+                    GF.showItemAnimation(targetCell, '🤝');
+                } else {
+                    stats.devil = true;
+                    message = 'The ghost curses you with dark karma! +😈';
+                    
+                    // Show devil karma animation
+                    GF.showItemAnimation(targetCell, '😈');
+                }
+                break;
 
             case 16: // Rare gem
-                inventory.modifyGold(playerIndex, 500);
-                message = 'Found a rare gem! Gained 500 💰!';
-                showGoldAnimation(targetCell, 500);
+                // Random gem value between 400-600 gold
+                const gemValue = Math.floor(Math.random() * 201) + 400;  // 400-600 range
+                inventory.modifyGold(playerIndex, gemValue);
+                message = `Found a rare gem! +${gemValue} 💰`;
+                
+                // Show gem and gold animation
+                GF.showGoldAnimation(targetCell, gemValue);
                 break;
 
             case 17: // Lost in dark forest
-                if (stats.hasMap && !inventory.hasUsedItem(playerIndex, 'map') && confirm('Use your map to navigate safely through the forest?')) {
-                    message = 'Your map helped you navigate the dark forest!';
+                if (stats.hasMap) {
+                    message = 'Your 🗺️ helped you navigate the dark forest!';
                     inventory.markItemAsUsed(playerIndex, 'map');
                     stats.hasMap = false;  // Remove map after use
                 } else {
-                    stats.turns = Math.max(0, (stats.turns || 0) - 1);
-                    message = 'Lost in a dark forest! Skip a turn 🌲';
+                    stats.skipNextTurn = true;
+                    message = 'Lost in a dark forest! Skip next turn 🌲';
                 }
                 break;
 
             case 18: // Merchant's armor
                 GF.createChoiceUI(
-                    `A merchant offers powerful armor!\nCost: 300 💰\nYour Gold: ${inventory.getGold(playerIndex)}\nEffect: +2 Health\n\nWhat would you like to do?`,
+                    `A merchant offers powerful armor! Effect: +3 💪`,
                     [
                         'Buy Armor (300 💰)',
                         'Decline Offer'
@@ -264,12 +241,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     (choice) => {
                         if (choice === '1' && inventory.getGold(playerIndex) >= 300) {
                             inventory.modifyGold(playerIndex, -300);
-                            stats.strength += 2;
-                            message = 'You bought powerful armor! +2 💪';
+                            stats.strength += 3;
+                            message = 'You bought powerful armor! +3 💪';
                         } else if (choice === '1') {
-                            message = 'Not enough gold to buy the armor! 💰❌';
+                            message = 'Not enough 💰 to buy the armor!';
                         } else {
-                            message = 'You declined the merchant\'s offer 🛡️';
+                            message = 'You declined the merchant\'s offer!';
                         }
                         showEventMessage(message);
                         updatePlayerStats(playerIndex);
@@ -279,49 +256,27 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 return; // Exit early due to async nature
 
             case 19: // Snake encounter
-                const requiredStrength = 3;
-                let canFight = stats.strength >= requiredStrength;
-                let hasPotion = stats.potions > 0;
-                let choices = [];
-                
-                if (canFight) choices.push('Fight the snake');
-                if (hasPotion) choices.push('Use potion to survive');
-
-                if (choices.length === 0) {
-                    // No options available - instant defeat
+                if (stats.strength >= 3) {
+                    // Fight with strength
+                    stats.strength = Math.max(0, stats.strength - 3);
+                    message = 'You defeated the snake but lost 3 💪!';
+                } else if (stats.potions > 0) {
+                    // Use potion to escape
+                    stats.hasPotion = false;
+                    message = 'Used a 🧪 to escape the snake!';
+                    inventory.markItemAsUsed(playerIndex, 'potion');
+                    setTimeout(() => {
+                        movePlayer(playerIndex, 1);
+                    }, 1000);
+                } else {
+                    // No options - return to start
                     GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
-                    message = 'The snake was too powerful! Back to start 🐍';
-                    showEventMessage(message);
-                    updatePlayerStats(playerIndex);
-                    return;
+                    message = 'The snake was too powerful! Back to start';
                 }
-
-                GF.createChoiceUI(
-                    `A huge 🐍 blocks your path! \n` +
-                    `Required: ${requiredStrength} 💪\n` +
-                    `Potions: ${stats.potions} 🧪\n\n` +
-                    `What will you do?`,
-                    choices,
-                    (choice) => {
-                        if (choice === '1' && canFight) {
-                            stats.strength = Math.max(0, stats.strength - 3);
-                            message = 'You defeated the snake but lost 3 💪 due to exhaustion!';
-                        } else if ((choice === '2' && hasPotion) || (choice === '1' && hasPotion)) {
-                            stats.potions--;
-                            message = 'Used a potion to escape the snake! 🧪';
-
-                            setTimeout(() => {
-                                movePlayer(playerIndex, 1);
-                            }, 1000);
-                        }
-                        showEventMessage(message);
-                        updatePlayerStats(playerIndex);
-                    }
-                );
-                return; // Exit early due to async nature
+                break;
 
             case 20: // Ancient treasure
-                const treasureType = Math.floor(Math.random() * 4);
+                const treasureType = Math.floor(Math.random() * 7);
                 switch(treasureType) {
                     case 0:
                         inventory.modifyGold(playerIndex, 400);
@@ -329,69 +284,94 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         showGoldAnimation(targetCell, 400);
                         break;
                     case 1:
-                        stats.potions += 3;
-                        message = 'Found ancient potions! +3 🧪';
+                        const magic = Math.floor(Math.random() *3);
+                        stats.magic += magic;
+                        message = `Found ancient scrolls! +${magic} 🔮`;
+                        GF.showItemAnimation(targetCell, '🔮');
                         break;
                     case 2:
-                        stats.magic += 2;
-                        message = 'Found ancient scrolls! +2 🔮';
+                        const strength = Math.floor(Math.random() * 3);
+                        stats.strength += 2;
+                        message = `Found ancient weapons! +${strength} 💪`;
+                        GF.showItemAnimation(targetCell, '💪');
                         break;
                     case 3:
-                        stats.strength += 2;
-                        message = 'Found ancient weapons! +2 💪';
+                        stats.hasClue = true;
+                        message = 'Found ancient clues! + 📜';
+                        GF.showItemAnimation(targetCell, '📜');
+                        break;
+                    case 4:
+                        stats.hasMap = true;
+                        message = 'Found ancient maps! + 🗺️';
+                        GF.showItemAnimation(targetCell, '🗺️');
+                        break;
+                    case 5:
+                        stats.hasPotion = true;
+                        message = 'Found ancient potions! + 🧪';
+                        GF.showItemAnimation(targetCell, '🧪');
+                        break;
+                    case 6:
+                        stats.hasClover = true;
+                        message = 'Found ancient clover! + 🍀';
+                        GF.showItemAnimation(targetCell, '🍀');
                         break;
                 }
                 break;
 
             case 21: // Pit trap
                 if (stats.hasMap) {
-                    message = 'Your map warned you about the pit trap! You avoided it! -1 🗺️';
+                    message = 'Your map warned you about the pit trap! You avoided it!';
                     stats.hasMap = false;
+                    inventory.markItemAsUsed(playerIndex, 'map');
                 } else {
-                    stats.turns = Math.max(0, (stats.turns || 0) - 1);
-                    message = 'Fell into a pit trap! Lost 1 turn 🕳️';
+                    stats.skipNextTurn = true;
+                    message = 'Fell into a pit trap! Lost 1 turn';
                 }
                 break;
 
             case 22: // Sorcerer's deal
                 GF.createChoiceUI(
-                    `A mysterious sorcerer appears!\n Trade 200 💰 For 2 🔮 or Decline the offer?`,
+                    'A mysterious sorcerer offers a trade!\n',
                     [
-                        'Accept offer (200 💰)',
+                        'Trade 2 💪 for 3 🔮',
+                        'Trade 2 🔮 for 3 💪',
                         'Decline offer'
                     ],
                     (choice) => {
-                        if (choice === '1' && inventory.getGold(playerIndex) >= 200) {
-                            inventory.modifyGold(playerIndex, -200);
-                            stats.magic += 2;
-                            message = 'The sorcerer granted you power! +2 🔮';
-                        } else if (choice === '1') {
-                            message = 'Not enough gold for the sorcerer\'s offer! 💰❌';
-                        } else {
-                            message = 'You declined the sorcerer\'s offer';
+                        switch(choice) {
+                            case '1':
+                                if (stats.strength >= 2) {
+                                    stats.strength -= 2;
+                                    stats.magic += 3;
+                                    message = 'Traded 2 strength for 3 magic! 💪➡️🔮';
+                                } else {
+                                    message = 'Not enough strength to trade! 💪❌';
+                                }
+                                break;
+                            case '2':
+                                if (stats.magic >= 2) {
+                                    stats.magic -= 2;
+                                    stats.strength += 3;
+                                    message = 'Traded 2 magic for 3 strength! 🔮➡️💪';
+                                } else {
+                                    message = 'Not enough magic to trade! 🔮❌';
+                                }
+                                break;
+                            default:
+                                message = 'Declined the sorcerer\'s offer';
                         }
-                        showEventMessage(message);
-                        updatePlayerStats(playerIndex);
-                        updateGoldDisplay(playerIndex);
+                        GF.showEventMessage(message);
+                        params.updatePlayerStats(playerIndex);
                     }
                 );
-                return; // Exit early due to async nature
+                return; // Exit early due to async choice
 
             case 23: // Village help
                 stats.hasAlly = true;
-                stats.strength += 2;
-                inventory.modifyGold(playerIndex, 100);
-                message = 'You saved the village! + ally (🤝), +2 💪, +100 💰';
-                
+                message = 'You saved the village! + 🤝';
+
                 // Add ally gained animation
-                const allyAnimation = document.createElement('div');
-                allyAnimation.className = 'map-animation';
-                allyAnimation.innerHTML = '🤝';
-                allyAnimation.style.fontSize = '24px';
-                targetCell.appendChild(allyAnimation);
-                setTimeout(() => allyAnimation.remove(), 3000);
-                
-                showGoldAnimation(targetCell, 100);
+                GF.showItemAnimation(targetCell, '🤝');
                 break;
 
             case 24: // Magic ring
@@ -407,10 +387,12 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                             case '1':
                                 stats.strength += 3;
                                 message = 'Your wish for strength was granted! +3 💪';
+                                GF.showItemAnimation(targetCell, '💪');
                                 break;
                             case '2':
                                 stats.magic += 3;
                                 message = 'Your wish for magic was granted! +3 🔮';
+                                GF.showItemAnimation(targetCell, '🔮');
                                 break;
                             case '3':
                                 inventory.modifyGold(playerIndex, 300);
@@ -426,9 +408,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 25: // Cross the river
                 if (stats.strength >= 5) {
-                    message = 'You crossed the river safely thanks to your strength!';
+                    stats.strength -= 2;
+                    message = 'You crossed the river safely thanks to your 💪!';
                 } else {
-                    message = 'Too weak to cross! The current pushes you back 🌊';
+                    message = 'Too weak to cross! The current pushes you back!';
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                     if (token) {
                         // Add animation class
