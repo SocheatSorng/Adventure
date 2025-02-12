@@ -53,69 +53,48 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 break;
 
             case 2: // Secret map
-                if (!stats.hasMap) {
-                    stats.hasMap = true;
-                    message = 'Found a secret map! 🗺️';
-                    const mapAnimation = document.createElement('div');
-                    mapAnimation.className = 'map-animation';
-                    mapAnimation.innerHTML = '🗺️';
-                    targetCell.appendChild(mapAnimation);
-                    setTimeout(() => mapAnimation.remove(), 3000);
-                }
+                stats.hasMap = true;
+                message = 'Found a secret map! 🗺️';
+
+                // Add map gained animation
+                const mapAnimation = document.createElement('div');
+                mapAnimation.className = 'map-animation';
+                mapAnimation.innerHTML = '🗺️';
+                targetCell.appendChild(mapAnimation);
+                setTimeout(() => mapAnimation.remove(), 3000);
                 break;
 
             case 3: // Bandit attack
-                if (stats.strength < 3) {
-                    inventory.modifyGold(playerIndex, -100);
-                    message = 'Lost to bandits! -100 💰';
-                } else {
-                    inventory.modifyGold(playerIndex, 150);
-                    message = 'Defeated bandits! +150 💰';
-                    showGoldAnimation(targetCell, 150);
-                }
+                // Lose 1 turn and random gold amount (50-150)
+                stats.skipNextTurn = true;
+                const stolenGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
+                inventory.modifyGold(playerIndex, -stolenGold);
+                message = `Bandits ambushed you! Lost ${stolenGold} 💰 and next turn!`;
                 break;
 
-            case 4: // Health loss 
-                if (stats.potions > 0) {
-                    // First show choice before any health changes
-                    GF.createChoiceUI(
-                        `You stepped on a poisonous plant! 🌿\nYou have ${stats.potions} potion(s).\nCurrent Health: ${stats.health}\n\nUse a potion to survive?`,
-                        [
-                            'Use potion',
-                            'Save potion'
-                        ],
-                        (choice) => {
-                            if (choice === '1') {
-                                stats.potions--;
-                                message = 'Used a health potion to survive! 🧪';
-                            } else {
-                                stats.health = Math.max(0, stats.health - 1);
-                                message = stats.health <= 0 ? 
-                                    'Stepped on a poisonous plant! Back to start 🌿' : 
-                                    'Lost 1 health! 💔';
-                                if (stats.health <= 0) {
-                                    GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
-                                }
-                            }
-                            showEventMessage(message);
-                            updatePlayerStats(playerIndex);
-                        }
-                    );
-                    return; // Exit early to prevent additional message updates
+            case 4: // Health loss
+                if (stats.hasPotion) {
+                    message = 'Your 🧪 protected you from harm!';
+                    stats.hasPotion = false;
+                    inventory.markItemAsUsed(playerIndex, 'potion');
                 } else {
-                    stats.health = Math.max(0, stats.health - 1);
-                    message = stats.health <= 0 ? 
-                        'Stepped on a poisonous plant! Back to start 🌿' : 
-                        'Lost 1 health! 💔';
-                    if (stats.health <= 0) {
-                        GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
-                    }
+                    // Send player back to start
+                    GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
+                    message = 'No potion to protect you! Back to start!';
                 }
                 break;
 
             case 5: // Health gain and potion
-                stats.potions++;
-                message = 'Gained a potion!';
+                stats.hasPotion = true;
+                message = 'Gained a 🧪!';
+
+                // Add potion gained animation
+                const potionAnimation = document.createElement('div');
+                potionAnimation.className = 'map-animation';
+                potionAnimation.innerHTML = '🧪'
+                potionAnimation.style.fontSize = '24px';  // Make emoji bigger
+                targetCell.appendChild(potionAnimation);
+                setTimeout(() => potionAnimation.remove(), 1000);
                 break;
 
             case 6: // Gambling with two dice
@@ -123,16 +102,17 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 const playerRoll = rollDice();
                 message = `You rolled ${playerRoll}... `;
                 
-                // Short pause before computer roll
+                // Short pause before tavern owner roll
                 setTimeout(() => {
-                    const houseRoll = rollDice();
-                    if (playerRoll > houseRoll) {
-                        inventory.modifyGold(playerIndex, 200);
-                        message += `Computer rolled ${houseRoll}. You won 200 💰!`;
-                        showGoldAnimation(targetCell, 200);
+                    const tavernOwnerRoll = rollDice();
+                    if (playerRoll > tavernOwnerRoll) {
+                        const wonGold = Math.floor(Math.random() * 201) + 100; // Random 100-300
+                        inventory.modifyGold(playerIndex, wonGold);
+                        message += `Tavern owner rolled ${tavernOwnerRoll}. You won ${wonGold} 💰!`;
+                        showGoldAnimation(targetCell, wonGold);
                     } else {
                         inventory.modifyGold(playerIndex, -100);
-                        message += `Computer rolled ${houseRoll}. You lost 100 💰!`;
+                        message += `Tavern owner rolled ${tavernOwnerRoll}. You lost 100 💰!`;
                     }
                     showEventMessage(message);
                     updatePlayerStats(playerIndex);
@@ -141,31 +121,52 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 return; // Exit early due to async nature
 
             case 7: // Trap
-                inventory.modifyGold(playerIndex, -50);
-                message = 'Fell into a trap! Lost 50 💰.';
+                if (stats.hasMap) {
+                    message = 'Your map revealed the hidden trap! Safe passage 🗺️✨';
+                    stats.hasMap = false;
+                    inventory.markItemAsUsed(playerIndex, 'map');
+                } else {
+                    const lostGold = Math.floor(Math.random() * 101) + 50; // Random 50-150
+                    inventory.modifyGold(playerIndex, -lostGold);
+                    message = `Fell into a trap! Lost ${lostGold} 💰!`;
+                }
                 break;
 
             case 8: // Bridge collapse - back to start
-                message = 'Bridge collapsed! Back to start.';
-                
-                // Move token back to start
-                const token = targetCell.querySelector(`.player${playerIndex + 1}`);
-                if (token) {
-                    const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
-                    startCell.appendChild(token);
-                    token.style.top = '50%';
-                    token.style.left = '50%';
+                if (stats.hasClue) {
+                    message = 'Your 📜 helped you find a safe path across!';
+                    stats.hasClue = false;
+                    inventory.markItemAsUsed(playerIndex, 'clue');
+                } else {
+                    message = 'Bridge collapsed! Back to start 🌉💥';
                     
-                    // Reset player position to start (0)
-                    playerPositions[playerIndex] = 0;
-                    cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
-                    cellOccupancy[0]++;
+                    // Move token back to start
+                    const token = targetCell.querySelector(`.player${playerIndex + 1}`);
+                    if (token) {
+                        const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
+                        startCell.appendChild(token);
+                        token.style.top = '50%';
+                        token.style.left = '50%';
+                        
+                        // Reset player position to start (0)
+                        playerPositions[playerIndex] = 0;
+                        cellOccupancy[TOTAL_CELLS - 1] = Math.max(0, cellOccupancy[TOTAL_CELLS - 1] - 1);
+                        cellOccupancy[0]++;
+                    }
                 }
                 break;
                 
             case 9: // Secret spell (ninth grid)
                 stats.magic++;
                 message = 'You learned a secret spell! +1🔮';
+
+                // Create floating animation for magic icon
+                const magicAnimation = document.createElement('div');
+                magicAnimation.className = 'map-animation';
+                magicAnimation.innerHTML = '🔮'
+                magicAnimation.style.fontSize = '24px';  // Make emoji bigger
+                targetCell.appendChild(magicAnimation);
+                setTimeout(() => magicAnimation.remove(), 1000);
                 break;
 
             case 10: // Lose turn
@@ -175,7 +176,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
 
             case 11: // Good karma
                 stats.status = 'good karma';
-                message = 'You helped a lost child! You gain good karma 😇';
+                message = 'You helped a lost child! + 😇';
                 
                 // Create floating animation for karma icon
                 const karmaAnimation = document.createElement('div');
@@ -633,7 +634,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
         }
     }
 
-    if (message && gridNumber !== 4) {
+    if (message) {
         GF.showEventMessage(message);
         updatePlayerStats(playerIndex);
         updateGoldDisplay(playerIndex);

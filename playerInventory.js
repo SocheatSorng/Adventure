@@ -3,18 +3,12 @@ class PlayerInventory {
         this.playerCount = Number(playerCount);
         this.playerGold = new Array(this.playerCount).fill(0);
         this.playerStats = Array(this.playerCount).fill().map(() => ({
-            health: 1,
             strength: 0,
-            potions: 0,
             hasMap: false,
             magic: 0,
             status: '',
-            karma: 0,
-            luck: 0,
             hasAlly: false,
             alignment: '',
-            honor: 0,
-            wisdom: 0,
             angel: false,
             devil: false,
             hasClover: false,
@@ -24,6 +18,7 @@ class PlayerInventory {
             metRoyal: false,
             hasCrown: false,
             hasTitan: false,
+            hasPotion: false,
             itemsUsed: new Set() // Add tracking of used items
         }));
     }
@@ -35,9 +30,7 @@ class PlayerInventory {
         // Basic stats with emojis
         const statDisplay = [
             `${this.playerGold[playerIndex]} 💰`,
-            `${stats.health} ❤️`,
             `${stats.strength} 💪`,
-            `${stats.potions} 🧪`,
             `${stats.magic} 🔮`
         ];
         
@@ -53,6 +46,7 @@ class PlayerInventory {
         if (stats.metRoyal) statDisplay.push('🏰'); 
         if (stats.hasCrown) statDisplay.push('👑');
         if (stats.hasTitan) statDisplay.push('🧌');
+        if (stats.hasPotion) statDisplay.push('🧪');
         
         // Join all stats with separators
         goldDisplay.textContent = statDisplay.join(' | ');
