@@ -356,17 +356,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => setTimeout(resolve, 500));
                 // Show event message only for final position
                 if (pos === newPos) {
-                    const GF = window.GameFunctions; // Add this line to get reference to GameFunctions
+                    const GF = window.GameFunctions;
+                    const stats = inventory.getStats(playerIndex);
+                    
+                    // Update skip turn visual indicator if needed
+                    const indicator = document.querySelectorAll('.player-indicator')[playerIndex];
+                    if (stats.skipNextTurn) {
+                        indicator.classList.add('skipped');
+                    } else {
+                        indicator.classList.remove('skipped');
+                    }
 
-                    // When calling handleColumnEvent, update the parameter object:
+                    // Call the original event handler
                     handleColumnEvent(playerIndex, pos, targetCell, {  
                         inventory,
                         playerPositions,
                         showEventMessage,
                         updatePlayerStats,
                         updateGoldDisplay: (idx) => updateGoldDisplay(idx),
-                        showGoldAnimation: GF.showGoldAnimation,        // Use GF reference
-                        showLostGoldAnimation: GF.showLostGoldAnimation, // Use GF reference
+                        showGoldAnimation: GF.showGoldAnimation,
+                        showLostGoldAnimation: GF.showLostGoldAnimation,
                         rollDice,
                         cellOccupancy,
                         TOTAL_CELLS,
@@ -404,6 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     diceIcon.addEventListener('click', () => {
         if (isRolling) return;
+        
+        // Check for waiting choice without changing message
+        if (window.GameFunctions.isWaitingForChoice) {
+            diceIcon.classList.add('shake');
+            setTimeout(() => diceIcon.classList.remove('shake'), 500);
+            return;
+        }
 
         const activePlayerIndex = currentPlayer - 1;
         const stats = inventory.getStats(activePlayerIndex);
@@ -413,12 +429,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check if player should skip their turn
         if (stats.skipNextTurn) {
             stats.skipNextTurn = false; // Reset the flag
-            indicator.classList.remove('skipped'); // Remove crossed-out effect
+            indicator.classList.add('skipped'); // Add crossed-out effect immediately
+            
+            // Show skip message
             showEventMessage(`Player ${currentPlayer}'s turn is skipped!`);
+            
+            // Animate the crossed-out effect before moving to next turn
             setTimeout(() => {
+                indicator.classList.remove('skipped'); // Remove the crossed-out effect
                 nextTurn();
                 showEventMessage('Roll the dice to move!');
-            }, 1500);
+            }, 1000); // Reduced from 1500ms to make it snappier
             return;
         }
 
@@ -611,12 +632,21 @@ document.addEventListener('DOMContentLoaded', () => {
             z-index: 1000;
             animation: fadeInOut 2s ease-in-out;
         }
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
     `;
     document.head.appendChild(style);
 
     // Add keyboard controls
     document.addEventListener('keydown', (e) => {
-        if (isRolling) return;
+        if (isRolling || window.GameFunctions.isWaitingForChoice) return;
         
         switch(e.key) {
             case ' ':  // Spacebar for current player's turn

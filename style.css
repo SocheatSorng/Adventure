@@ -149,6 +149,16 @@ td img[src^="data:image"] {
     bottom: 0;
     background: rgba(0, 0, 0, 0.2);
     z-index: 1;
+    animation: crossOut 0.3s forwards;
+}
+
+@keyframes crossOut {
+    from {
+        width: 0;
+    }
+    to {
+        width: 100%;
+    }
 }
 
 .player-indicator.skipped::after {
@@ -159,6 +169,11 @@ td img[src^="data:image"] {
     transform: translate(-50%, -50%);
     font-size: 1.5em;
     z-index: 2;
+}
+
+.player-indicator.skipped {
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
 }
 
 /* Player-specific colors */

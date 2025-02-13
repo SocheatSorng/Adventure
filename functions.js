@@ -1,4 +1,6 @@
 window.GameFunctions = {
+    isWaitingForChoice: false, // Add this flag at the start
+
     sendPlayerToStart: function(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS) {
         playerPositions[playerIndex] = 0;
         const startCell = document.querySelector('#gameTable tr:first-child td:first-child');
@@ -26,21 +28,26 @@ window.GameFunctions = {
     },
 
     createChoiceUI: function(message, choices, callback) {
+        this.isWaitingForChoice = true;
         const eventDisplay = document.getElementById('eventDisplay');
-        const originalMessage = eventDisplay.textContent;
-
+        
         const buttonsHtml = choices.map((choice, index) => 
             `<button onclick="window.handleChoice(${index})" class="choice-button">${choice}</button>`
         ).join('');
 
-        eventDisplay.innerHTML = `
+        // Store the choice UI HTML instead of just the message
+        this.choiceUI = `
             <div>${message}</div>
             <div class="choice-buttons">${buttonsHtml}</div>
         `;
 
+        eventDisplay.innerHTML = this.choiceUI;
+
         window.handleChoice = (choiceIndex) => {
-            eventDisplay.innerHTML = originalMessage;
+            this.choiceUI = null;
+            eventDisplay.innerHTML = 'Roll the dice to move!';
             delete window.handleChoice;
+            this.isWaitingForChoice = false;
             callback((choiceIndex + 1).toString());
         };
     },
@@ -79,6 +86,9 @@ window.GameFunctions = {
     },
 
     showEventMessage: function(message) {
+        // Don't override message if there's an active choice UI
+        if (this.isWaitingForChoice) return;
+        
         const eventDisplay = document.getElementById('eventDisplay');
         eventDisplay.textContent = message || 'Roll the dice to move!';
     },
