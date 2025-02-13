@@ -1,7 +1,21 @@
 (function() {
     // Add to existing handleLateEvents function cases
-    window.handleLateEventsExtension = function(playerIndex, position, targetCell, params) {
-        const stats = params.inventory.getStats(playerIndex);
+    window.handleLateEventsExtension = function(playerIndex, position, targetCell, {
+        inventory,
+        playerPositions,
+        showEventMessage,
+        updatePlayerStats,
+        updateGoldDisplay,
+        showGoldAnimation,
+        showLostGoldAnimation,
+        rollDice,
+        cellOccupancy,
+        TOTAL_CELLS,
+        movePlayer,
+        currentPlayer,
+        nextTurn  // Add this parameter
+    }) {
+        const stats = inventory.getStats(playerIndex);
         let message = '';
         const GF = window.GameFunctions;
         
@@ -9,7 +23,7 @@
         const gridNumber = position + 1;
 
         function localCheckHealth() {
-            return params.checkHealth(stats, params.playerPositions, playerIndex, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+            return params.checkHealth(stats, playerPositions, playerIndex, targetCell, cellOccupancy, TOTAL_CELLS);
         }
 
         switch(gridNumber) {
@@ -17,7 +31,7 @@
             if (stats.devil) {
                 // Evil karma: move backward to grid 55 (index 54)
                 stats.devil = false;
-                params.playerPositions[playerIndex] = 54;  // Move to grid 55
+                playerPositions[playerIndex] = 54;  // Move to grid 55
                 
                 // Move token to grid 55
                 const portalCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(54/8) + 1}) td:nth-child(${54%8 + 1})`);
@@ -34,7 +48,7 @@
                         GF.showEventMessage(message);
                         }, 1000);
                     }
-                params.inventory.markItemAsUsed(playerIndex, 'devil');
+                inventory.markItemAsUsed(playerIndex, 'devil');
                 } else if (stats.angel) {
                     // Good karma: receive random item
                     stats.angel = false;
@@ -65,7 +79,7 @@
                     message = 'The sacred chamber remains silent...';
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             case 58: // Titan Battle
@@ -85,11 +99,11 @@
                         (choice) => {
                             if (choice === '1') {
                                 
-                                params.inventory.markItemAsUsed(playerIndex, 'ally');
+                                inventory.markItemAsUsed(playerIndex, 'ally');
                                 message = 'Your 🤝 sacrificed themselves to save you!';
                             } else {
                                 // Move to grid 17 (index 16)
-                                params.playerPositions[playerIndex] = 16;
+                                playerPositions[playerIndex] = 16;
                                 const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(16/8) + 1}) td:nth-child(${16%8 + 1})`);
                                 const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                                 if (token && newCell) {
@@ -100,13 +114,13 @@
                                 message = 'Retreated from the Titan! Moved back to the forest';
                             }
                             GF.showEventMessage(message);
-                            params.updatePlayerStats(playerIndex);
+                            updatePlayerStats(playerIndex);
                         }
                     );
                     return; // Exit early due to async choice
                 } else {
                     // Move to grid 17 (index 16)
-                    params.playerPositions[playerIndex] = 16;
+                    playerPositions[playerIndex] = 16;
                     const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(16/8) + 1}) td:nth-child(${16%8 + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                     if (token && newCell) {
@@ -117,13 +131,13 @@
                     message = 'The Titan is too powerful! Moved back to the forest';
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
                 
             case 59: // Cursed Crown
                 if (stats.hasCrown) {
                     // Auto-win if player has crown
-                    params.inventory.modifyGold(playerIndex, 10000);
+                    inventory.modifyGold(playerIndex, 10000);
                     message = '👑 VICTORY! The crown recognizes its true ruler! +10,000 💰';
                     GF.showGoldAnimation(targetCell, 10000);
                     
@@ -137,13 +151,13 @@
                     message = 'A mysterious crown beckons in the distance...';
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             case 60: // Earthquake Trial
                 if (stats.hasStaff) {
                     // Teleport to Mysterious Portal (grid 55, index 54)
-                    params.playerPositions[playerIndex] = 54;
+                    playerPositions[playerIndex] = 54;
                     const portalCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(54/8) + 1}) td:nth-child(${54%8 + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                     if (token && portalCell) {
@@ -152,19 +166,19 @@
                         token.style.left = '50%';
                     }
                     message = 'Your 🪄 protected you! Teleported to the Mysterious Portal!';
-                    params.inventory.markItemAsUsed(playerIndex, 'staff');
+                    inventory.markItemAsUsed(playerIndex, 'staff');
                 } else if (stats.hasMap) {
                     // Move player forward 1 step
-                    params.playerPositions[playerIndex] = Math.min(params.TOTAL_CELLS - 1, params.playerPositions[playerIndex] + 1);
+                    playerPositions[playerIndex] = Math.min(TOTAL_CELLS - 1, playerPositions[playerIndex] + 1);
                     message = `Your 🗺️ guides you! Moved forward 1 step!`;
-                    params.inventory.markItemAsUsed(playerIndex, 'map');
+                    inventory.markItemAsUsed(playerIndex, 'map');
                 } else {
                     // Send player back to start
-                    GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                    GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
                     message = 'Earthquake throws you back to the beginning!';
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             case 61: // Ultimate Boss Battle
@@ -172,7 +186,7 @@
                 stats.skipNextTurn = true;
                 message = 'The Ultimate Boss drains your energy! Lost next turn!';
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
             
             case 62: // Breaking the Curse
@@ -182,12 +196,12 @@
                         stats.hasCrown = true;
                         stats.hasClue = false;
                         stats.angel = false;
-                        params.inventory.markItemAsUsed(playerIndex, 'angel');
-                        params.inventory.markItemAsUsed(playerIndex, 'clue');
+                        inventory.markItemAsUsed(playerIndex, 'angel');
+                        inventory.markItemAsUsed(playerIndex, 'clue');
                         GF.showItemAnimation(targetCell, '👑');
                     } else if (stats.devil) {
                         // Evil karma gets crown but sent to start
-                        GF.sendPlayerToStart(playerIndex, params.playerPositions, targetCell, params.cellOccupancy, params.TOTAL_CELLS);
+                        GF.sendPlayerToStart(playerIndex, playerPositions, targetCell, cellOccupancy, TOTAL_CELLS);
                         message = 'Dark magic reveals the crown, but at a price! Back to start!';
                         stats.devil = false;
                     }
@@ -197,7 +211,7 @@
                     message = 'The curse remains unbroken... Need a clue to proceed 📜❌';
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             case 63: // Ruler's Choice
@@ -208,16 +222,16 @@
                     // Player with Titan ally is considered powerful
                     message = 'Your powerful Titan ally commands respect! Safe passage granted 🧌✨';
                     stats.hasTitan = false;
-                    params.inventory.markItemAsUsed(playerIndex, 'titan');
+                    inventory.markItemAsUsed(playerIndex, 'titan');
                 }
                     else {
                     // Move player backward randomly (1-6 steps)
                     const backSteps = Math.floor(Math.random() * 6) + 1;
-                    params.playerPositions[playerIndex] = Math.max(0, params.playerPositions[playerIndex] - backSteps);
+                    playerPositions[playerIndex] = Math.max(0, playerPositions[playerIndex] - backSteps);
                     message = `Lack of status betrays you! Moved back ${backSteps} steps! 👑❌`;
                     
                     // Move player token
-                    const newPos = params.playerPositions[playerIndex];
+                    const newPos = playerPositions[playerIndex];
                     const newCell = document.querySelector(`#gameTable tr:nth-child(${Math.floor(newPos/8) + 1}) td:nth-child(${newPos%8 + 1})`);
                     const token = targetCell.querySelector(`.player${playerIndex + 1}`);
                     if (token && newCell) {
@@ -227,13 +241,13 @@
                     }
                 }
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             case 64: // Victory Celebration
                 // Calculate final stats
                 const finalStats = {
-                    gold: params.inventory.getGold(playerIndex),
+                    gold: inventory.getGold(playerIndex),
                     strength: stats.strength || 0,
                     magic: stats.magic || 0
                 };
@@ -285,7 +299,7 @@
                 }, 1000);
             
                 GF.showEventMessage(message);
-                params.updatePlayerStats(playerIndex);
+                updatePlayerStats(playerIndex);
                 break;
 
             default:
@@ -298,13 +312,55 @@
 
     // Modify existing handleLateEvents to use extension
     const originalHandleLateEvents = window.handleLateEvents;
-    window.handleLateEvents = function(playerIndex, position, targetCell, params) {
+    window.handleLateEvents = function(playerIndex, position, targetCell, {
+        inventory,
+        playerPositions,
+        showEventMessage,
+        updatePlayerStats,
+        updateGoldDisplay,
+        showGoldAnimation,
+        showLostGoldAnimation,
+        rollDice,
+        cellOccupancy,
+        TOTAL_CELLS,
+        movePlayer,
+        currentPlayer,
+        nextTurn  // Add this parameter
+    }) {
         // Try extension first
-        const extensionResult = window.handleLateEventsExtension(playerIndex, position, targetCell, params);
+        const extensionResult = window.handleLateEventsExtension(playerIndex, position, targetCell, {
+            inventory,
+            playerPositions,
+            showEventMessage,
+            updatePlayerStats,
+            updateGoldDisplay,
+            showGoldAnimation,
+            showLostGoldAnimation,
+            rollDice,
+            cellOccupancy,
+            TOTAL_CELLS,
+            movePlayer,
+            currentPlayer,
+            nextTurn
+        });
         if (extensionResult !== null) {
             return extensionResult;
         }
         // Fall back to original handler if extension didn't handle it
-        return originalHandleLateEvents(playerIndex, position, targetCell, params);
+        return originalHandleLateEvents(playerIndex, position, targetCell, {
+            inventory,
+            playerPositions,
+            showEventMessage,
+            updatePlayerStats,
+            updateGoldDisplay,
+            showGoldAnimation,
+            showLostGoldAnimation,
+            rollDice,
+            cellOccupancy,
+            TOTAL_CELLS,
+            movePlayer,
+            currentPlayer,
+            nextTurn
+        });
     };
 })();

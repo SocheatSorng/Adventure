@@ -10,7 +10,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
     cellOccupancy,
     TOTAL_CELLS,
     movePlayer,
-    currentPlayer
+    currentPlayer,
+    nextTurn  // Add this parameter
 }) {
     const stats = inventory.getStats(playerIndex);
     let message = '';
@@ -44,7 +45,8 @@ function handleColumnEvent(playerIndex, position, targetCell, {
             cellOccupancy,
             TOTAL_CELLS,
             movePlayer,
-            currentPlayer
+            currentPlayer,
+            nextTurn  // Add this line to pass nextTurn to late events
         });
     } else {
         switch(gridNumber) {
@@ -107,6 +109,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     showEventMessage(message);
                     updatePlayerStats(playerIndex);
                     updateGoldDisplay(playerIndex);
+                    nextTurn(); // Now nextTurn is available
                 }, 1000);
                 return; // Exit early due to async nature
 
@@ -241,9 +244,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         showEventMessage(message);
                         updatePlayerStats(playerIndex);
                         updateGoldDisplay(playerIndex);
+                        nextTurn(); // Now nextTurn is available
                     }
                 );
-                return; // Exit early due to async nature
+                return;
 
             case 19: // Snake encounter
                 if (stats.strength >= 3) {
@@ -354,9 +358,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         }
                         GF.showEventMessage(message);
                         updatePlayerStats(playerIndex);
+                        nextTurn(); // Now nextTurn is available
                     }
                 );
-                return; // Exit early due to async choice
+                return;
 
             case 23: // Village help
                 stats.hasAlly = true;
@@ -392,6 +397,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                         }
                         showEventMessage(message);
                         updatePlayerStats(playerIndex);
+                        nextTurn(); // Now nextTurn is available
                     }
                 );
                 break;

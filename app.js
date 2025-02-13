@@ -239,10 +239,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Add turn handling
+    // Add turn locking
+    let isTurnLocked = false;
+
+    // Modify nextTurn function
     function nextTurn() {
+        if (isTurnLocked || window.GameFunctions.isWaitingForChoice) {
+            return; // Don't change turns if locked or waiting for choice
+        }
+
         const indicators = document.querySelectorAll('.player-indicator');
         const currentIndicator = indicators[currentPlayer - 1];
-        currentIndicator.classList.remove('active', 'skipped'); // Remove both classes
+        currentIndicator.classList.remove('active', 'skipped');
         
         currentPlayer = currentPlayer % playerCount + 1;
         const nextIndicator = indicators[currentPlayer - 1];
@@ -294,7 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
         eventDisplay.textContent = message || 'Roll the dice to move!';  // Default message when empty
     }
 
+    // Modify movePlayer function to handle turn locking
     async function movePlayer(playerIndex, diceResult) {
+        isTurnLocked = true;
         // Validate inputs
         if (playerIndex < 0 || playerIndex >= playerCount) {
             console.error('Invalid player index:', playerIndex);
@@ -389,8 +399,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         indicator.classList.remove('skipped');
                     }
 
-                    // Call the original event handler
-                    handleColumnEvent(playerIndex, pos, targetCell, {  
+                    // Handle event and wait for any choices to complete
+                    await handleColumnEvent(playerIndex, pos, targetCell, {
                         inventory,
                         playerPositions,
                         showEventMessage,
@@ -402,8 +412,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         cellOccupancy,
                         TOTAL_CELLS,
                         movePlayer,
-                        currentPlayer
+                        currentPlayer,
+                        nextTurn  // Add this line
                     });
+                    
+                    // Only call nextTurn if there's no active choice
+                    if (!GF.isWaitingForChoice) {
+                        nextTurn();
+                    }
                 }
             }
             token.classList.remove('token-moving');
@@ -414,6 +430,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error moving player:', error);
             return false;
+        } finally {
+            isTurnLocked = false;
         }
     }
 
@@ -434,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     diceIcon.addEventListener('click', () => {
-        if (isRolling) return;
+        if (isRolling || isTurnLocked || window.GameFunctions.isWaitingForChoice) return;
         
         // Check for waiting choice without changing message
         if (window.GameFunctions.isWaitingForChoice) {

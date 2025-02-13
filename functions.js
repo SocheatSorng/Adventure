@@ -35,7 +35,6 @@ window.GameFunctions = {
             `<button onclick="window.handleChoice(${index})" class="choice-button">${choice}</button>`
         ).join('');
 
-        // Store the choice UI HTML instead of just the message
         this.choiceUI = `
             <div>${message}</div>
             <div class="choice-buttons">${buttonsHtml}</div>
