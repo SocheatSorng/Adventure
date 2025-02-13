@@ -241,9 +241,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add turn handling
     function nextTurn() {
         const indicators = document.querySelectorAll('.player-indicator');
-        indicators[currentPlayer - 1].classList.remove('active');
+        const currentIndicator = indicators[currentPlayer - 1];
+        currentIndicator.classList.remove('active', 'skipped'); // Remove both classes
+        
         currentPlayer = currentPlayer % playerCount + 1;
-        indicators[currentPlayer - 1].classList.add('active');
+        const nextIndicator = indicators[currentPlayer - 1];
+        const nextPlayerStats = inventory.getStats(currentPlayer - 1);
+        
+        if (nextPlayerStats.skipNextTurn) {
+            nextIndicator.classList.add('skipped');
+        }
+        
+        nextIndicator.classList.add('active');
     }
 
     // Add player position tracking - start at position 0 instead of 1
@@ -395,9 +404,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     diceIcon.addEventListener('click', () => {
         if (isRolling) return;
-        showEventMessage('Rolling...');  // Show rolling message
+
         const activePlayerIndex = currentPlayer - 1;
+        const stats = inventory.getStats(activePlayerIndex);
         const currentPos = playerPositions[activePlayerIndex];
+        const indicator = document.querySelectorAll('.player-indicator')[activePlayerIndex];
+
+        // Check if player should skip their turn
+        if (stats.skipNextTurn) {
+            stats.skipNextTurn = false; // Reset the flag
+            indicator.classList.remove('skipped'); // Remove crossed-out effect
+            showEventMessage(`Player ${currentPlayer}'s turn is skipped!`);
+            setTimeout(() => {
+                nextTurn();
+                showEventMessage('Roll the dice to move!');
+            }, 1500);
+            return;
+        }
+
+        showEventMessage('Rolling...');
+        
         // Update token placement logic
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
@@ -407,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tokensContainer.appendChild(token);
             }
         }
+
         const remainingSteps = TOTAL_CELLS - currentPos;
         isRolling = true;
         diceIcon.classList.add('dice-roll');
@@ -447,15 +474,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add function to handle manual step input
     function handleManualStep(steps) {
         if (isRolling) return;
-        showEventMessage('Moving...');  // Show moving message
+
         const activePlayerIndex = currentPlayer - 1;
+        const stats = inventory.getStats(activePlayerIndex);
         const currentPos = playerPositions[activePlayerIndex];
+
+        // Check if player should skip their turn
+        if (stats.skipNextTurn) {
+            stats.skipNextTurn = false; // Reset the flag
+            showEventMessage(`Player ${currentPlayer}'s turn is skipped!`);
+            setTimeout(() => {
+                nextTurn();
+                showEventMessage('Roll the dice to move!');
+            }, 1500);
+            return;
+        }
+
+        showEventMessage('Moving...');
+        
         // Validate input
         steps = parseInt(steps);
         if (isNaN(steps) || steps < 1 || steps > 6) {
             console.log('Invalid input. Please enter a number between 1 and 6.');
             return;
         }
+
+        // Update token placement logic
         if (currentPos === 0) {
             const token = playerTokens[activePlayerIndex];
             if (!token.parentElement.classList.contains('td')) {
@@ -464,6 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tokensContainer.appendChild(token);
             }
         }
+
         const remainingSteps = TOTAL_CELLS - currentPos;
         if (steps > remainingSteps) {
             showTurnSkipMessage(remainingSteps);

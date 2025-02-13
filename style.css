@@ -114,12 +114,51 @@ td img[src^="data:image"] {
     gap: 4px;
     text-align: center;
     transition: all 0.3s ease;
+    position: relative; /* Add this to make absolute positioning work */
 }
 
 /* Remove the generic active state color */
 .player-indicator.active {
     color: white;
     border-color: rgba(255, 255, 255, 0.5);
+}
+
+.player-indicator.skipped {
+    opacity: 0.5;
+    position: relative;
+}
+
+.player-indicator.skipped::after {
+    content: '⏭️';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 16px;
+}
+
+.player-indicator.skipped {
+    position: relative;
+}
+
+.player-indicator.skipped::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+.player-indicator.skipped::after {
+    content: '❌';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5em;
+    z-index: 2;
 }
 
 /* Player-specific colors */
