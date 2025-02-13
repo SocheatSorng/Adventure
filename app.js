@@ -345,12 +345,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 cellOccupancy[pos]++;
                 // Position token
                 const position = cellOccupancy[pos] - 1;
-                const angle = (position * (360 / 4)) * (Math.PI / 180);
-                const radius = 20;
-                const xOffset = Math.cos(angle) * radius;
-                const yOffset = Math.sin(angle) * radius;
-                token.style.top = `${50 + yOffset}%`;
-                token.style.left = `${50 + xOffset}%`;
+                const radius = 15; // Reduced from 20 to bring tokens closer together
+                let xOffset, yOffset;
+                
+                switch(position) {
+                    case 0: // Center
+                        xOffset = 0;
+                        yOffset = 0;
+                        break;
+                    case 1: // Top
+                        xOffset = 0;
+                        yOffset = -radius;
+                        break;
+                    case 2: // Right
+                        xOffset = radius;
+                        yOffset = 0;
+                        break;
+                    case 3: // Bottom
+                        xOffset = 0;
+                        yOffset = radius;
+                        break;
+                    default: // More than 4 tokens, stack them slightly offset
+                        const angle = ((position % 4) * 90) * (Math.PI / 180);
+                        xOffset = Math.cos(angle) * (radius - 5);
+                        yOffset = Math.sin(angle) * (radius - 5);
+                }
+                
+                token.style.top = `calc(50% + ${yOffset}px)`;
+                token.style.left = `calc(50% + ${xOffset}px)`;
                 targetCell.appendChild(token);
                 // Wait for animation
                 await new Promise(resolve => setTimeout(resolve, 500));
