@@ -4,7 +4,7 @@
     flex-direction: column;  /* Change to column to stack elements vertically */
     align-items: center;
     padding: 20px;
-    margin-top: 80px; /* Add space for fixed header */
+    margin-top: 120px; /* Increased from 80px to 120px to create more space */
     padding-bottom: 100px; /* Add space for fixed event display */
 }
 
@@ -106,13 +106,53 @@ td img[src^="data:image"] {
 .player-indicator {
     padding: 0.5rem 1rem;
     background: #fff;
-    border: 2px solid #333;
+    border: 2px solid transparent; /* Changed from #333 to transparent */
     border-radius: 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 4px;
     text-align: center;
+    transition: all 0.3s ease;
+}
+
+/* Remove the generic active state color */
+.player-indicator.active {
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Player-specific colors */
+.player-indicator.player1-theme {
+    border-color: #FF4136;
+}
+
+.player-indicator.player2-theme {
+    border-color: #2ECC40;
+}
+
+.player-indicator.player3-theme {
+    border-color: #0074D9;
+}
+
+.player-indicator.player4-theme {
+    border-color: #FF851B;
+}
+
+.player-indicator.player1-theme.active {
+    background-color: #FF4136;
+}
+
+.player-indicator.player2-theme.active {
+    background-color: #2ECC40;
+}
+
+.player-indicator.player3-theme.active {
+    background-color: #0074D9;
+}
+
+.player-indicator.player4-theme.active {
+    background-color: #FF851B;
 }
 
 .gold-display {
@@ -193,6 +233,7 @@ td img[src^="data:image"] {
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-height: 100px; /* Added minimum height to accommodate more items */
 }
 
 .header-content {
@@ -474,4 +515,13 @@ td img[src^="data:image"] {
 .choice-button:hover {
     background: #45a049;
     transform: scale(1.05);
+}
+
+.player-controls {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 8px;
+    margin: 10px 0;
 }

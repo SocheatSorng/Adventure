@@ -26,16 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
         inventory.updateStats(playerIndex, wrapper);
     }
 
-    // Update player indicator creation first
-    for (let i = 1; i <= playerCount; i++) {
+    // Modify player indicator creation
+    function createPlayerIndicator(playerNum) {
         const wrapper = document.createElement('div');
         wrapper.style.display = 'flex';
         wrapper.style.flexDirection = 'column';
         wrapper.style.alignItems = 'center';
+        wrapper.style.position = 'relative';
         
         const indicator = document.createElement('div');
-        indicator.className = `player-indicator ${i === 1 ? 'active' : ''}`;
-        indicator.textContent = `Player ${i}`;
+        indicator.className = `player-indicator player${playerNum}-theme ${playerNum === 1 ? 'active' : ''}`;
+        indicator.textContent = `Player ${playerNum}`;
         
         const goldDisplay = document.createElement('div');
         goldDisplay.className = 'gold-display';
@@ -43,6 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
         
         wrapper.appendChild(indicator);
         wrapper.appendChild(goldDisplay);
+        return wrapper;
+    }
+
+    // Update player indicator creation first
+    for (let i = 1; i <= playerCount; i++) {
+        const wrapper = createPlayerIndicator(i);
         playerIndicators.appendChild(wrapper);
     }
 
@@ -561,4 +568,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     `;
     document.head.appendChild(style);
+
+    // Add keyboard controls
+    document.addEventListener('keydown', (e) => {
+        if (isRolling) return;
+        
+        switch(e.key) {
+            case ' ':  // Spacebar for current player's turn
+                diceIcon.click();
+                break;
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+                if (currentPlayer === 1) {  // Player 1 uses number keys
+                    handleManualStep(parseInt(e.key));
+                }
+                break;
+            case 'n':
+            case 'N':
+                nextTurn();  // Allow manual turn passing
+                break;
+        }
+    });
 });
