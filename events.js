@@ -93,7 +93,10 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                 // Player's turn
                 const playerRoll = rollDice();
                 message = `You rolled ${playerRoll}... `;
-                
+
+                // Block the turn from advancing until the tavern owner's roll resolves
+                GF.isWaitingForChoice = true;
+
                 // Short pause before tavern owner roll
                 setTimeout(() => {
                     const tavernOwnerRoll = rollDice();
@@ -109,6 +112,7 @@ function handleColumnEvent(playerIndex, position, targetCell, {
                     showEventMessage(message);
                     updatePlayerStats(playerIndex);
                     updateGoldDisplay(playerIndex);
+                    GF.isWaitingForChoice = false;
                     nextTurn(); // Now nextTurn is available
                 }, 1000);
                 return; // Exit early due to async nature

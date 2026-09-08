@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adventure Game</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="game-container">
@@ -16,6 +18,9 @@
                     <div class="game-controls">
                         <button id="magnifyToggle" class="control-button">
                             <i class="fas fa-search"></i>
+                        </button>
+                        <button id="shopToggle" class="control-button">
+                            <i class="fas fa-store"></i>
                         </button>
                         <div class="dice-container">
                             <i class="fas fa-dice fa-2x" id="diceIcon"></i>
@@ -28,6 +33,35 @@
         <div class="table-container">
             <div id="eventDisplay" class="event-display"></div>
             <div id="magnifier" class="magnifier"></div>
+            <div id="shopModal" class="shop-modal" hidden>
+                <div class="shop-panel">
+                    <h3>Traveling Merchant</h3>
+                    <div class="shop-gold"><span id="shopPlayerLabel"></span>'s gold: <span id="shopGoldAmount">0</span> 💰</div>
+                    <div class="shop-items">
+                        <div class="shop-item">
+                            <span class="shop-item-label">🧪 Potion</span>
+                            <span class="shop-item-price">60 💰</span>
+                            <button class="shop-buy-button" data-item="potion" data-cost="60">Buy</button>
+                        </div>
+                        <div class="shop-item">
+                            <span class="shop-item-label">🗺️ Map</span>
+                            <span class="shop-item-price">90 💰</span>
+                            <button class="shop-buy-button" data-item="map" data-cost="90">Buy</button>
+                        </div>
+                        <div class="shop-item">
+                            <span class="shop-item-label">💪 Strength +1</span>
+                            <span class="shop-item-price">80 💰</span>
+                            <button class="shop-buy-button" data-item="strength" data-cost="80">Buy</button>
+                        </div>
+                        <div class="shop-item">
+                            <span class="shop-item-label">🔮 Magic +1</span>
+                            <span class="shop-item-price">80 💰</span>
+                            <button class="shop-buy-button" data-item="magic" data-cost="80">Buy</button>
+                        </div>
+                    </div>
+                    <button id="shopCloseButton" class="choice-button shop-close-button">Close shop</button>
+                </div>
+            </div>
             <table id="gameTable">
                 <tbody>
                     <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>

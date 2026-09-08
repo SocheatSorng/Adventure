@@ -139,6 +139,38 @@ window.GameFunctions = {
         return confirm(`You have ${itemName}. Do you want to use it? ${benefit}`);
     },
 
+    handlePlayerEncounter: function(playerIndex, rivalIndex, targetCell, ctx) {
+        const { inventory, showEventMessage, updatePlayerStats, updateGoldDisplay, nextTurn } = ctx;
+        const rivalGold = inventory.getGold(rivalIndex);
+
+        if (rivalGold <= 0) {
+            showEventMessage(`You crossed paths with Player ${rivalIndex + 1}, but they're broke!`);
+            nextTurn();
+            return;
+        }
+
+        this.createChoiceUI(
+            `You landed on Player ${rivalIndex + 1}'s square! Steal some gold, or let them be?`,
+            ['Steal gold', 'Let it go'],
+            (choice) => {
+                if (choice === '1') {
+                    const stolen = Math.max(1, Math.floor(rivalGold * (0.2 + Math.random() * 0.2))); // 20-40%
+                    inventory.modifyGold(rivalIndex, -stolen);
+                    inventory.modifyGold(playerIndex, stolen);
+                    updatePlayerStats(rivalIndex);
+                    updateGoldDisplay(rivalIndex);
+                    updatePlayerStats(playerIndex);
+                    updateGoldDisplay(playerIndex);
+                    this.showLostGoldAnimation(targetCell, stolen);
+                    showEventMessage(`You stole ${stolen} 💰 from Player ${rivalIndex + 1}!`);
+                } else {
+                    showEventMessage(`You let Player ${rivalIndex + 1} keep their gold.`);
+                }
+                nextTurn();
+            }
+        );
+    },
+
     animateTokenMovement: function(token, newPosition, playerPositions, playerIndex) {
         // Add animation class
         token.classList.add('token-moving');

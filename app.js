@@ -59,13 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const table = document.getElementById('gameTable');
     const magnifier = document.getElementById('magnifier');
-    
-    // Array of available image names
-    const imageNames = Array.from({length: TOTAL_CELLS}, (_, i) => `${i + 1}.jpeg`);
 
-    // Load images in batches
-    const batchSize = 8; // Load 8 images at a time
-    let currentBatch = 0;
+    // Sprite sheet containing all board cell images, arranged in an 8x8 grid
+    // in the same left-to-right, top-to-bottom order as the board itself.
+    const SPRITE_PATH = 'sprite_sheet.png';
+    const SPRITE_COLS = BOARD_SIZE;
+    const SPRITE_ROWS = BOARD_SIZE;
 
     // Validate table structure
     function validateTableStructure() {
@@ -95,84 +94,70 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    function loadImageBatch() {
-        const start = currentBatch * batchSize;
-        const end = Math.min(start + batchSize, TOTAL_CELLS);
-
-        for (let i = start; i < end; i++) {
+    function loadBoardImages() {
+        for (let i = 0; i < TOTAL_CELLS; i++) {
             const row = Math.floor(i / BOARD_SIZE);
             const col = i % BOARD_SIZE;
-            
+
             const tableRow = table.rows[row];
             if (!tableRow) {
                 console.error(`Row ${row} not found`);
                 continue;
             }
-            
+
             const cell = tableRow.cells[col];
             if (!cell) {
                 console.error(`Cell ${col} in row ${row} not found`);
                 continue;
             }
 
-            // Create image element
-            const img = document.createElement('img');
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'cover';
-            
-            // Set correct image path
-            const imagePath = `/home/socheat/Documents/Github/No-Cheat/Adventure/images/${imageNames[i]}`;
-            img.dataset.src = imagePath;
-            img.alt = `Event ${i + 1}`;
-            
-            // Add error handling for images
-            img.onerror = () => {
-                console.error(`Failed to load image: ${imagePath}`);
-                img.style.backgroundColor = '#ccc'; // Fallback background color
-            };
+            // Crop this cell's portion out of the shared sprite sheet
+            const cellImage = document.createElement('div');
+            cellImage.className = 'cell-image';
+            cellImage.dataset.row = row;
+            cellImage.dataset.col = col;
+            cellImage.setAttribute('role', 'img');
+            cellImage.setAttribute('aria-label', `Event ${i + 1}`);
+            cellImage.style.backgroundImage = `url(${SPRITE_PATH})`;
+            cellImage.style.backgroundSize = `${SPRITE_COLS * 100}% ${SPRITE_ROWS * 100}%`;
+            cellImage.style.backgroundPosition = `${(col / (SPRITE_COLS - 1)) * 100}% ${(row / (SPRITE_ROWS - 1)) * 100}%`;
 
-            cell.appendChild(img);
-
-            // Load image immediately instead of using IntersectionObserver
-            img.src = imagePath;
-        }
-
-        currentBatch++;
-        if (currentBatch * batchSize < TOTAL_CELLS) {
-            setTimeout(loadImageBatch, 100);
+            cell.appendChild(cellImage);
         }
     }
 
-    // Start loading first batch
-    loadImageBatch();
+    loadBoardImages();
 
     // Optimize magnifier effect
     let isMoving = false;
     let rafId = null;
 
-    function updateMagnifier(e, img) {
-        const rect = img.getBoundingClientRect();
+    function updateMagnifier(e, cellImage) {
+        const rect = cellImage.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        
+
         // Calculate relative position within the image
         const xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100));
         const yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100));
-        
+
+        // Make sure the magnifier is rendered before measuring its size,
+        // otherwise offsetWidth/offsetHeight read 0 while display is 'none'.
+        magnifier.style.display = 'block';
+
         // Position the magnifier at bottom right of cursor
         const magWidth = magnifier.offsetWidth;
         const magHeight = magnifier.offsetHeight;
         const offsetX = 10; // Gap between cursor and magnifier
         const offsetY = 10;
-        
+
         // Calculate position ensuring magnifier stays within viewport
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        
+
         let left = e.pageX + offsetX;
         let top = e.pageY + offsetY;
-        
+
         // Adjust position if magnifier would go outside viewport
         if (left + magWidth > viewportWidth) {
             left = e.pageX - magWidth - offsetX;
@@ -180,21 +165,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (top + magHeight > viewportHeight) {
             top = e.pageY - magHeight - offsetY;
         }
-        
-        magnifier.style.display = 'block';
+
         magnifier.style.left = `${left}px`;
         magnifier.style.top = `${top}px`;
-        
-        // Use the actual image source for higher quality zoom
-        const imgSrc = img.dataset.src || img.src;
-        if (imgSrc.includes('data:image')) {
-            magnifier.style.display = 'none';
-            return;
-        }
-        
-        magnifier.style.backgroundImage = `url(${imgSrc})`;
-        magnifier.style.backgroundSize = '300%'; // Reduced from 400%
-        magnifier.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+
+        // Zoom into just this cell's region of the shared sprite sheet
+        const row = Number(cellImage.dataset.row);
+        const col = Number(cellImage.dataset.col);
+        const zoom = 3; // 300% zoom, matching the previous single-image behavior
+        const scaledCellWidth = magWidth * zoom;
+        const scaledCellHeight = magHeight * zoom;
+
+        magnifier.style.backgroundImage = `url(${SPRITE_PATH})`;
+        magnifier.style.backgroundSize = `${scaledCellWidth * SPRITE_COLS}px ${scaledCellHeight * SPRITE_ROWS}px`;
+        const posX = -(col * scaledCellWidth) - (xPercent / 100) * (scaledCellWidth - magWidth);
+        const posY = -(row * scaledCellHeight) - (yPercent / 100) * (scaledCellHeight - magHeight);
+        magnifier.style.backgroundPosition = `${posX}px ${posY}px`;
     }
 
     // Optimize mousemove performance with debounce
@@ -220,15 +206,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const img = e.target.closest('img');
-        if (!img || img.src.includes('data:image')) {
+        const cellImage = e.target.closest('.cell-image');
+        if (!cellImage) {
             magnifier.style.display = 'none';
             return;
         }
 
         clearTimeout(timeout);
         timeout = setTimeout(() => {
-            updateMagnifier(e, img);
+            updateMagnifier(e, cellImage);
         }, 10);
     });
 
@@ -236,6 +222,96 @@ document.addEventListener('DOMContentLoaded', () => {
     table.addEventListener('mouseleave', () => {
         magnifier.style.display = 'none';
         isMoving = false;
+    });
+
+    // Shop: spend gold on items at any time during your turn, without using it up
+    const shopToggle = document.getElementById('shopToggle');
+    const shopModal = document.getElementById('shopModal');
+    const shopPanel = shopModal.querySelector('.shop-panel');
+    const shopPlayerLabel = document.getElementById('shopPlayerLabel');
+    const shopGoldAmount = document.getElementById('shopGoldAmount');
+    const shopCloseButton = document.getElementById('shopCloseButton');
+    const shopBuyButtons = Array.from(document.querySelectorAll('.shop-buy-button'));
+    const shopBooleanItems = { potion: 'hasPotion', map: 'hasMap' };
+
+    function refreshShopDisplay() {
+        const activePlayerIndex = currentPlayer - 1;
+        const gold = inventory.getGold(activePlayerIndex);
+        const stats = inventory.getStats(activePlayerIndex);
+
+        shopPlayerLabel.textContent = `Player ${currentPlayer}`;
+        shopGoldAmount.textContent = gold;
+
+        shopBuyButtons.forEach(button => {
+            const item = button.dataset.item;
+            const cost = Number(button.dataset.cost);
+            const ownedStat = shopBooleanItems[item];
+
+            if (ownedStat && stats[ownedStat]) {
+                button.disabled = true;
+                button.textContent = 'Owned';
+            } else {
+                button.disabled = gold < cost;
+                button.textContent = 'Buy';
+            }
+        });
+    }
+
+    function openShop() {
+        if (isRolling || isTurnLocked || window.GameFunctions.isWaitingForChoice) {
+            shopToggle.classList.add('shake');
+            setTimeout(() => shopToggle.classList.remove('shake'), 500);
+            return;
+        }
+        window.GameFunctions.isWaitingForChoice = true; // block rolling while the shop is open
+        refreshShopDisplay();
+        shopModal.hidden = false;
+    }
+
+    function closeShop() {
+        shopModal.hidden = true;
+        window.GameFunctions.isWaitingForChoice = false;
+    }
+
+    shopToggle.addEventListener('click', () => {
+        if (shopModal.hidden) {
+            openShop();
+        } else {
+            closeShop();
+        }
+    });
+
+    shopCloseButton.addEventListener('click', closeShop);
+
+    shopModal.addEventListener('click', (e) => {
+        if (e.target === shopModal) closeShop();
+    });
+
+    shopBuyButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const activePlayerIndex = currentPlayer - 1;
+            const item = button.dataset.item;
+            const cost = Number(button.dataset.cost);
+            const stats = inventory.getStats(activePlayerIndex);
+
+            if (inventory.getGold(activePlayerIndex) < cost) return;
+            if (shopBooleanItems[item] && stats[shopBooleanItems[item]]) return;
+
+            inventory.modifyGold(activePlayerIndex, -cost);
+            switch (item) {
+                case 'potion': stats.hasPotion = true; break;
+                case 'map': stats.hasMap = true; break;
+                case 'strength': stats.strength += 1; break;
+                case 'magic': stats.magic += 1; break;
+            }
+
+            updatePlayerStats(activePlayerIndex);
+            updateGoldDisplay(activePlayerIndex);
+            refreshShopDisplay();
+
+            const itemLabel = button.parentElement.querySelector('.shop-item-label').textContent;
+            showEventMessage(`Player ${currentPlayer} bought ${itemLabel}!`);
+        });
     });
 
     // Add turn handling
@@ -399,26 +475,40 @@ document.addEventListener('DOMContentLoaded', () => {
                         indicator.classList.remove('skipped');
                     }
 
-                    // Handle event and wait for any choices to complete
-                    await handleColumnEvent(playerIndex, pos, targetCell, {
-                        inventory,
-                        playerPositions,
-                        showEventMessage,
-                        updatePlayerStats,
-                        updateGoldDisplay: (idx) => updateGoldDisplay(idx),
-                        showGoldAnimation: GF.showGoldAnimation,
-                        showLostGoldAnimation: GF.showLostGoldAnimation,
-                        rollDice,
-                        cellOccupancy,
-                        TOTAL_CELLS,
-                        movePlayer,
-                        currentPlayer,
-                        nextTurn  // Add this line
-                    });
-                    
-                    // Only call nextTurn if there's no active choice
-                    if (!GF.isWaitingForChoice) {
-                        nextTurn();
+                    // Landing on another player's square triggers an encounter instead of the cell's own event
+                    const rivalIndex = pos === 0 ? -1 :
+                        playerPositions.findIndex((p, idx) => idx !== playerIndex && p === pos);
+
+                    if (rivalIndex !== -1) {
+                        GF.handlePlayerEncounter(playerIndex, rivalIndex, targetCell, {
+                            inventory,
+                            showEventMessage,
+                            updatePlayerStats,
+                            updateGoldDisplay: (idx) => updateGoldDisplay(idx),
+                            nextTurn
+                        });
+                    } else {
+                        // Handle event and wait for any choices to complete
+                        await handleColumnEvent(playerIndex, pos, targetCell, {
+                            inventory,
+                            playerPositions,
+                            showEventMessage,
+                            updatePlayerStats,
+                            updateGoldDisplay: (idx) => updateGoldDisplay(idx),
+                            showGoldAnimation: GF.showGoldAnimation,
+                            showLostGoldAnimation: GF.showLostGoldAnimation,
+                            rollDice,
+                            cellOccupancy,
+                            TOTAL_CELLS,
+                            movePlayer,
+                            currentPlayer,
+                            nextTurn  // Add this line
+                        });
+
+                        // Only call nextTurn if there's no active choice
+                        if (!GF.isWaitingForChoice) {
+                            nextTurn();
+                        }
                     }
                 }
             }
@@ -495,7 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const remainingSteps = TOTAL_CELLS - currentPos;
+        const remainingSteps = (TOTAL_CELLS - 1) - currentPos;
         isRolling = true;
         diceIcon.classList.add('dice-roll');
         diceResult.classList.remove('show');
@@ -522,8 +612,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             token.style.transform = 'translate(-50%, -50%)';
                         }
                         const moveSuccessful = await movePlayer(activePlayerIndex, finalResult);
-                        if (moveSuccessful) {
-                            nextTurn();
+                        if (moveSuccessful && !window.GameFunctions.isWaitingForChoice) {
+                            const justWon = playerPositions[activePlayerIndex] === TOTAL_CELLS - 1;
+                            if (finalResult === 6 && !justWon) {
+                                // Rolling a 6 earns this player another roll
+                                showEventMessage(`Player ${currentPlayer} rolled a 6 - go again!`);
+                            } else {
+                                nextTurn();
+                            }
                         }
                     }
                     isRolling = false;
@@ -570,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const remainingSteps = TOTAL_CELLS - currentPos;
+        const remainingSteps = (TOTAL_CELLS - 1) - currentPos;
         if (steps > remainingSteps) {
             showTurnSkipMessage(remainingSteps);
             setTimeout(() => nextTurn(), 800);

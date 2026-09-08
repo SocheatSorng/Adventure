@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adventure Game - Player Selection</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="player-selection">
         <h1>Adventure Game</h1>
         <div class="selection-buttons">
-            <button onclick="startGame(1)">Single Player</button>
-            <button onclick="startGame(2)">2 Players</button>
-            <button onclick="startGame(4)">4 Players</button>
+            <button onclick="startGame(1)"><i class="fas fa-user"></i> Single Player</button>
+            <button onclick="startGame(2)"><i class="fas fa-user-friends"></i> 2 Players</button>
+            <button onclick="startGame(4)"><i class="fas fa-users"></i> 4 Players</button>
         </div>
     </div>
     <script>
